@@ -9,17 +9,8 @@
 
 # Terraform AWS Provider
 
-[![Forums][discuss-badge]][discuss]
 
-[discuss-badge]: https://img.shields.io/badge/discuss-terraform--aws-623CE4.svg?style=flat
-[discuss]: https://discuss.hashicorp.com/c/terraform-providers/tf-aws/
 
-The [AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs) enables [Terraform](https://terraform.io) to manage [AWS](https://aws.amazon.com) resources.
+## Please note 
+This is not public release of aws terraform provider with OracleDatabase@AWS capabilities. This is not supported by Oracle and anyone clones this branch and builds binary at their own risk.
 
-- [Contributing guide](https://hashicorp.github.io/terraform-provider-aws/)
-- [Quarterly development roadmap](ROADMAP.md)
-- [FAQ](https://hashicorp.github.io/terraform-provider-aws/faq/)
-- [Tutorials](https://learn.hashicorp.com/collections/terraform/aws-get-started)
-- [discuss.hashicorp.com](https://discuss.hashicorp.com/c/terraform-providers/tf-aws/)
-
-_**Please note:** We take Terraform's security and our users' trust very seriously. If you believe you have found a security issue in the Terraform AWS Provider, please responsibly disclose it by contacting us at security@hashicorp.com._
