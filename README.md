@@ -14,3 +14,5 @@
 ## Please note 
 This is not public release of aws terraform provider with OracleDatabase@AWS capabilities. This is not supported by Oracle and anyone clones this branch and builds binary at their own risk.
 
+### Change log
+[ODB@AWS Change log](https://github.com/oracle-community/terraform-provider-aws/blob/preview/ODB%40AWS_CHANGELOG.md)
