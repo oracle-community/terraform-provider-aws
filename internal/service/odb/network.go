@@ -492,7 +492,7 @@ func (r *resourceNetwork) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	if plan.S3Access.ValueEnum() == odbtypes.AccessEnabled {
-		_, err = waitManagedServiceEnabled(ctx, conn, *input.OdbNetworkId, managedServiceTimeout, func(managedService *odbtypes.ManagedServices) odbtypes.ManagedResourceStatus {
+		_, err = waitManagedServiceEnabled(ctx, conn, plan.OdbNetworkId.ValueString(), managedServiceTimeout, func(managedService *odbtypes.ManagedServices) odbtypes.ManagedResourceStatus {
 			return managedService.S3Access.Status
 		})
 		if err != nil {
@@ -505,7 +505,7 @@ func (r *resourceNetwork) Update(ctx context.Context, req resource.UpdateRequest
 		plan.S3Access = fwtypes.StringEnumValue(odbtypes.AccessEnabled)
 
 	} else if plan.S3Access.ValueEnum() == odbtypes.AccessDisabled {
-		_, err = waitManagedServiceDisabled(ctx, conn, *input.OdbNetworkId, managedServiceTimeout, func(managedService *odbtypes.ManagedServices) odbtypes.ManagedResourceStatus {
+		_, err = waitManagedServiceDisabled(ctx, conn, plan.OdbNetworkId.ValueString(), managedServiceTimeout, func(managedService *odbtypes.ManagedServices) odbtypes.ManagedResourceStatus {
 			return managedService.S3Access.Status
 		})
 		if err != nil {
@@ -519,7 +519,7 @@ func (r *resourceNetwork) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	if plan.ZeroEtlAccess.ValueEnum() == odbtypes.AccessEnabled {
-		_, err = waitManagedServiceEnabled(ctx, conn, *input.OdbNetworkId, managedServiceTimeout, func(managedService *odbtypes.ManagedServices) odbtypes.ManagedResourceStatus {
+		_, err = waitManagedServiceEnabled(ctx, conn, plan.OdbNetworkId.ValueString(), managedServiceTimeout, func(managedService *odbtypes.ManagedServices) odbtypes.ManagedResourceStatus {
 			return managedService.ZeroEtlAccess.Status
 		})
 		if err != nil {
@@ -532,7 +532,7 @@ func (r *resourceNetwork) Update(ctx context.Context, req resource.UpdateRequest
 		plan.ZeroEtlAccess = fwtypes.StringEnumValue(odbtypes.AccessEnabled)
 
 	} else if plan.ZeroEtlAccess.ValueEnum() == odbtypes.AccessDisabled {
-		_, err = waitManagedServiceDisabled(ctx, conn, *input.OdbNetworkId, managedServiceTimeout, func(managedService *odbtypes.ManagedServices) odbtypes.ManagedResourceStatus {
+		_, err = waitManagedServiceDisabled(ctx, conn, plan.OdbNetworkId.ValueString(), managedServiceTimeout, func(managedService *odbtypes.ManagedServices) odbtypes.ManagedResourceStatus {
 			return managedService.ZeroEtlAccess.Status
 		})
 		if err != nil {
