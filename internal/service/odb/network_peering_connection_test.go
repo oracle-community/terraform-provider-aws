@@ -30,8 +30,8 @@ type odbNwkPeeringResourceTest struct {
 	odbNwkDisplayNamePrefix     string
 }
 
-var odbPeeringTestResource = odbNwkPeeringResourceTest{
-	vpcNamePrefix:               "vpc",
+var odbNwkPeeringTestResource = odbNwkPeeringResourceTest{
+	vpcNamePrefix:               "odb-vpc",
 	odbPeeringDisplayNamePrefix: "odb-peering",
 	odbNwkDisplayNamePrefix:     "odb-net",
 }
@@ -44,23 +44,22 @@ func TestAccODBNetworkPeeringConnection_basic(t *testing.T) {
 	}
 
 	var odbPeeringResource odb.GetOdbPeeringConnectionOutput
-	odbPeeringDisplayName := sdkacctest.RandomWithPrefix(odbPeeringTestResource.odbPeeringDisplayNamePrefix)
-	vpcName := sdkacctest.RandomWithPrefix(odbPeeringTestResource.vpcNamePrefix)
-	odbNetName := sdkacctest.RandomWithPrefix(odbPeeringTestResource.odbNwkDisplayNamePrefix)
+	odbPeeringDisplayName := sdkacctest.RandomWithPrefix(odbNwkPeeringTestResource.odbPeeringDisplayNamePrefix)
+	vpcName := sdkacctest.RandomWithPrefix(odbNwkPeeringTestResource.vpcNamePrefix)
+	odbNetName := sdkacctest.RandomWithPrefix(odbNwkPeeringTestResource.odbNwkDisplayNamePrefix)
 	resourceName := "aws_odb_network_peering_connection.test"
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			acctest.PreCheck(ctx, t)
-			//acctest.PreCheckPartitionHasService(t, names.ODBEndpointID)
-			odbPeeringTestResource.testAccPreCheck(ctx, t)
+			odbNwkPeeringTestResource.testAccPreCheck(ctx, t)
 		},
 		ErrorCheck:               acctest.ErrorCheck(t, names.ODBServiceID),
 		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
-		CheckDestroy:             odbPeeringTestResource.testAccCheckNetworkPeeringConnectionDestroy(ctx),
+		CheckDestroy:             odbNwkPeeringTestResource.testAccCheckNetworkPeeringConnectionDestroy(ctx),
 		Steps: []resource.TestStep{
 			{
-				Config: odbPeeringTestResource.basicConfig(vpcName, odbNetName, odbPeeringDisplayName),
+				Config: odbNwkPeeringTestResource.basicConfig(vpcName, odbNetName, odbPeeringDisplayName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					testAccCheckNetworkPeeringConnectionExists(ctx, resourceName, &odbPeeringResource),
 					resource.TestCheckResourceAttr(resourceName, "tags.%", "1"),
@@ -84,24 +83,22 @@ func TestAccODBNetworkPeeringConnectionAddRemoveTag(t *testing.T) {
 	}
 
 	var odbPeeringResource odb.GetOdbPeeringConnectionOutput
-	odbPeeringDisplayName := sdkacctest.RandomWithPrefix(odbPeeringTestResource.odbPeeringDisplayNamePrefix)
-	//vpcName := sdkacctest.RandomWithPrefix(odbPeeringTestResource.vpcNamePrefix)
-	odbNetName := sdkacctest.RandomWithPrefix(odbPeeringTestResource.odbNwkDisplayNamePrefix)
+	odbPeeringDisplayName := sdkacctest.RandomWithPrefix(odbNwkPeeringTestResource.odbPeeringDisplayNamePrefix)
+	vpcName := sdkacctest.RandomWithPrefix(odbNwkPeeringTestResource.vpcNamePrefix)
+	odbNetName := sdkacctest.RandomWithPrefix(odbNwkPeeringTestResource.odbNwkDisplayNamePrefix)
 	resourceName := "aws_odb_network_peering_connection.test"
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			acctest.PreCheck(ctx, t)
-			//acctest.PreCheckPartitionHasService(t, names.ODBEndpointID)
-			odbPeeringTestResource.testAccPreCheck(ctx, t)
+			odbNwkPeeringTestResource.testAccPreCheck(ctx, t)
 		},
 		ErrorCheck:               acctest.ErrorCheck(t, names.ODBServiceID),
 		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
-		CheckDestroy:             odbPeeringTestResource.testAccCheckNetworkPeeringConnectionDestroy(ctx),
+		CheckDestroy:             odbNwkPeeringTestResource.testAccCheckNetworkPeeringConnectionDestroy(ctx),
 		Steps: []resource.TestStep{
 			{
-				Config: odbPeeringTestResource.basicConfigWithVPC("vpc-084bc7dd335e156cc", odbNetName, odbPeeringDisplayName),
-				//odbPeeringTestResource.basicConfig(vpcName, odbNetName, odbPeeringDisplayName),
+				Config: odbNwkPeeringTestResource.basicConfig(vpcName, odbNetName, odbPeeringDisplayName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					testAccCheckNetworkPeeringConnectionExists(ctx, resourceName, &odbPeeringResource),
 					resource.TestCheckResourceAttr(resourceName, "tags.%", "1"),
@@ -114,8 +111,7 @@ func TestAccODBNetworkPeeringConnectionAddRemoveTag(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: odbPeeringTestResource.basicConfigWithVPCWithNoTag("vpc-084bc7dd335e156cc", odbNetName, odbPeeringDisplayName),
-				//odbPeeringTestResource.basicConfig(vpcName, odbNetName, odbPeeringDisplayName),
+				Config: odbNwkPeeringTestResource.basicConfigNoTag(vpcName, odbNetName, odbPeeringDisplayName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					testAccCheckNetworkPeeringConnectionExists(ctx, resourceName, &odbPeeringResource),
 					resource.TestCheckResourceAttr(resourceName, "tags.%", "0"),
@@ -137,27 +133,25 @@ func TestAccODBNetworkPeeringConnection_disappears(t *testing.T) {
 	}
 
 	var odbPeering odb.GetOdbPeeringConnectionOutput
-	odbPeeringDisplayName := sdkacctest.RandomWithPrefix(odbPeeringTestResource.odbPeeringDisplayNamePrefix)
-	vpcName := sdkacctest.RandomWithPrefix(odbPeeringTestResource.vpcNamePrefix)
-	odbNetDisplayName := sdkacctest.RandomWithPrefix(odbPeeringTestResource.odbPeeringDisplayNamePrefix)
+	odbPeeringDisplayName := sdkacctest.RandomWithPrefix(odbNwkPeeringTestResource.odbPeeringDisplayNamePrefix)
+	vpcName := sdkacctest.RandomWithPrefix(odbNwkPeeringTestResource.vpcNamePrefix)
+	odbNetDisplayName := sdkacctest.RandomWithPrefix(odbNwkPeeringTestResource.odbPeeringDisplayNamePrefix)
 	resourceName := "aws_odb_network_peering_connection.test"
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			acctest.PreCheck(ctx, t)
-			//acctest.PreCheckPartitionHasService(t, names.ODBEndpointID)
-			odbPeeringTestResource.testAccPreCheck(ctx, t)
+			odbNwkPeeringTestResource.testAccPreCheck(ctx, t)
 		},
 		ErrorCheck:               acctest.ErrorCheck(t, names.ODBServiceID),
 		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
-		//CheckDestroy:             odbPeeringTestResource.testAccCheckNetworkPeeringConnectionDestroy(ctx),
+		CheckDestroy:             odbNwkPeeringTestResource.testAccCheckNetworkPeeringConnectionDestroy(ctx),
 		Steps: []resource.TestStep{
 			{
-				Config: odbPeeringTestResource.basicConfig(vpcName, odbNetDisplayName, odbPeeringDisplayName),
+				Config: odbNwkPeeringTestResource.basicConfig(vpcName, odbNetDisplayName, odbPeeringDisplayName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					testAccCheckNetworkPeeringConnectionExists(ctx, resourceName, &odbPeering),
-
-					//acctest.CheckFrameworkResourceDisappears(ctx, acctest.Provider, tfodb.odbPeering, resourceName),
+					acctest.CheckFrameworkResourceDisappears(ctx, acctest.Provider, tfodb.OdbNetworkPeeringConnection, resourceName),
 				),
 				ExpectNonEmptyPlan: true,
 			},
@@ -174,7 +168,7 @@ func (odbNwkPeeringResourceTest) testAccCheckNetworkPeeringConnectionDestroy(ctx
 				continue
 			}
 
-			_, err := odbPeeringTestResource.findOdbPeering(ctx, conn, rs.Primary.ID)
+			_, err := odbNwkPeeringTestResource.findOdbPeering(ctx, conn, rs.Primary.ID)
 			if tfresource.NotFound(err) {
 				return nil
 			}
@@ -202,7 +196,7 @@ func testAccCheckNetworkPeeringConnectionExists(ctx context.Context, name string
 
 		conn := acctest.Provider.Meta().(*conns.AWSClient).ODBClient(ctx)
 
-		resp, err := odbPeeringTestResource.findOdbPeering(ctx, conn, rs.Primary.ID)
+		resp, err := odbNwkPeeringTestResource.findOdbPeering(ctx, conn, rs.Primary.ID)
 		if err != nil {
 			return create.Error(names.ODB, create.ErrActionCheckingExistence, tfodb.ResNameNetworkPeeringConnection, rs.Primary.ID, err)
 		}
@@ -228,16 +222,6 @@ func (odbNwkPeeringResourceTest) testAccPreCheck(ctx context.Context, t *testing
 	}
 }
 
-/*func testAccCheckNetworkPeeringConnectionNotRecreated(before, after *odb.GetOdbPeeringConnectionOutput) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-		if before, after := aws.ToString(before.NetworkPeeringConnectionId), aws.ToString(after.NetworkPeeringConnectionId); before != after {
-			return create.Error(names.ODB, create.ErrActionCheckingNotRecreated, tfodb.ResNameNetworkPeeringConnection, aws.ToString(before.NetworkPeeringConnectionId), errors.New("recreated"))
-		}
-
-		return nil
-	}
-}*/
-
 func (odbNwkPeeringResourceTest) findOdbPeering(ctx context.Context, conn *odb.Client, id string) (output *odb.GetOdbPeeringConnectionOutput, err error) {
 	input := odb.GetOdbPeeringConnectionInput{
 		OdbPeeringConnectionId: &id,
@@ -262,8 +246,6 @@ func (odbNwkPeeringResourceTest) basicConfig(vpcName, odbNetName, odbPeeringName
 	return fmt.Sprintf(`
 resource "aws_vpc" "test" {
   cidr_block       = "10.0.0.0/16"
-  instance_tenancy = "default"
-
   tags = {
     Name = %[1]q
   }
@@ -289,33 +271,15 @@ resource "aws_odb_network_peering_connection" "test" {
 `, vpcName, odbNetName, odbPeeringName)
 }
 
-func (odbNwkPeeringResourceTest) basicConfigWithVPC(vpcName, odbNetName, odbPeeringName string) string {
+func (odbNwkPeeringResourceTest) basicConfigNoTag(vpcName, odbNetName, odbPeeringName string) string {
 	return fmt.Sprintf(`
+resource "aws_vpc" "test" {
+  cidr_block       = "10.0.0.0/16"
 
-
-resource "aws_odb_network" "test" {
-  display_name          = %[2]q
-  availability_zone_id = "use1-az6"
-  client_subnet_cidr   = "10.2.0.0/24"
-  backup_subnet_cidr   = "10.2.1.0/24"
-  s3_access = "DISABLED"
-  zero_etl_access = "DISABLED"
-}
-
-resource "aws_odb_network_peering_connection" "test" {
-  display_name = %[3]q
-  odb_network_id = aws_odb_network.test.id
-  peer_network_id = %[1]q
   tags = {
-    "env"="dev"
+    Name = %[1]q
   }
 }
-`, vpcName, odbNetName, odbPeeringName)
-}
-
-func (odbNwkPeeringResourceTest) basicConfigWithVPCWithNoTag(vpcName, odbNetName, odbPeeringName string) string {
-	return fmt.Sprintf(`
-
 
 resource "aws_odb_network" "test" {
   display_name          = %[2]q
@@ -329,7 +293,8 @@ resource "aws_odb_network" "test" {
 resource "aws_odb_network_peering_connection" "test" {
   display_name = %[3]q
   odb_network_id = aws_odb_network.test.id
-  peer_network_id = %[1]q
+  peer_network_id = aws_vpc.test.id
+ 
 }
 `, vpcName, odbNetName, odbPeeringName)
 }

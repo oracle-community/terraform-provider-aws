@@ -7,6 +7,7 @@ import (
 	"errors"
 	"github.com/hashicorp/terraform-provider-aws/internal/enum"
 	tftags "github.com/hashicorp/terraform-provider-aws/internal/tags"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -51,6 +52,8 @@ func newResourceNetworkPeeringConnection(_ context.Context) (resource.ResourceWi
 const (
 	ResNameNetworkPeeringConnection = "Network Peering Connection"
 )
+
+var OdbNetworkPeeringConnection = newResourceNetworkPeeringConnection
 
 type resourceNetworkPeeringConnection struct {
 	framework.ResourceWithModel[odbNetworkPeeringConnectionResourceModel]
@@ -208,9 +211,37 @@ func (r *resourceNetworkPeeringConnection) Read(ctx context.Context, req resourc
 		)
 		return
 	}
-	state.CreatedAt = types.StringValue(out.CreatedAt.Format(time.RFC3339))
 
-	resp.Diagnostics.Append(flex.Flatten(ctx, out, &state, flex.WithIgnoredFieldNamesAppend("CreatedAt"))...)
+	odbNetworks, err := conn.ListOdbNetworks(ctx, &odb.ListOdbNetworksInput{})
+	if err != nil {
+		resp.Diagnostics.AddError(
+			create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetworkPeeringConnection, state.OdbPeeringConnectionId.ValueString(), err),
+			err.Error(),
+		)
+		return
+	}
+
+	var odbNetworkId *string = nil
+	for _, tempOdbNetwork := range odbNetworks.OdbNetworks {
+		if *tempOdbNetwork.OdbNetworkArn == *out.OdbNetworkArn {
+			odbNetworkId = tempOdbNetwork.OdbNetworkId
+		}
+	}
+	if odbNetworkId == nil {
+		resp.Diagnostics.AddError(
+			create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetworkPeeringConnection, state.OdbPeeringConnectionId.ValueString(), err),
+			err.Error(),
+		)
+		return
+	}
+
+	peerVpcId := strings.Split(*out.PeerNetworkArn, "/")[1]
+	state.PeerNetworkId = types.StringValue(peerVpcId)
+	state.CreatedAt = types.StringValue(out.CreatedAt.Format(time.RFC3339))
+	state.OdbNetworkId = types.StringValue(*odbNetworkId)
+
+	resp.Diagnostics.Append(flex.Flatten(ctx, out, &state, flex.WithIgnoredFieldNamesAppend("CreatedAt"),
+		flex.WithIgnoredFieldNamesAppend("PeerNetworkId"), flex.WithIgnoredFieldNamesAppend("OdbNetworkId"))...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -281,30 +312,10 @@ func (r *resourceNetworkPeeringConnection) Delete(ctx context.Context, req resou
 	}
 }
 
-// TIP: ==== TERRAFORM IMPORTING ====
-// If Read can get all the information it needs from the Identifier
-// (i.e., path.Root("id")), you can use the PassthroughID importer. Otherwise,
-// you'll need a custom import function.
-//
-// See more:
-// https://developer.hashicorp.com/terraform/plugin/framework/resources/import
 func (r *resourceNetworkPeeringConnection) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root(names.AttrID), req, resp)
 }
 
-// TIP: ==== WAITERS ====
-// Some resources of some services have waiters provided by the AWS API.
-// Unless they do not work properly, use them rather than defining new ones
-// here.
-//
-// Sometimes we define the wait, status, and find functions in separate
-// files, wait.go, status.go, and find.go. Follow the pattern set out in the
-// service and define these where it makes the most sense.
-//
-// If these functions are used in the _test.go file, they will need to be
-// exported (i.e., capitalized).
-//
-// You will need to adjust the parameters and names to fit the service.
 func waitNetworkPeeringConnectionCreated(ctx context.Context, conn *odb.Client, id string, timeout time.Duration) (*odbtypes.OdbPeeringConnection, error) {
 	stateConf := &retry.StateChangeConf{
 		Pending:                   enum.Slice(odbtypes.ResourceStatusProvisioning),
@@ -341,8 +352,6 @@ func waitNetworkPeeringConnectionUpdated(ctx context.Context, conn *odb.Client, 
 	return nil, err
 }
 
-// TIP: A deleted waiter is almost like a backwards created waiter. There may
-// be additional pending states, however.
 func waitNetworkPeeringConnectionDeleted(ctx context.Context, conn *odb.Client, id string, timeout time.Duration) (*odbtypes.OdbPeeringConnection, error) {
 	stateConf := &retry.StateChangeConf{
 		Pending: enum.Slice(odbtypes.ResourceStatusTerminating),
@@ -359,13 +368,6 @@ func waitNetworkPeeringConnectionDeleted(ctx context.Context, conn *odb.Client, 
 	return nil, err
 }
 
-// TIP: ==== STATUS ====
-// The status function can return an actual status when that field is
-// available from the API (e.g., out.Status). Otherwise, you can use custom
-// statuses to communicate the states of the resource.
-//
-// Waiters consume the values returned by status functions. Design status so
-// that it can be reused by a create, update, and delete waiter, if possible.
 func statusNetworkPeeringConnection(ctx context.Context, conn *odb.Client, id string) retry.StateRefreshFunc {
 	return func() (any, string, error) {
 		out, err := findNetworkPeeringConnectionByID(ctx, conn, id)
@@ -381,11 +383,6 @@ func statusNetworkPeeringConnection(ctx context.Context, conn *odb.Client, id st
 	}
 }
 
-// TIP: ==== FINDERS ====
-// The find function is not strictly necessary. You could do the API
-// request from the status function. However, we have found that find often
-// comes in handy in other places besides the status function. As a result, it
-// is good practice to define it separately.
 func findNetworkPeeringConnectionByID(ctx context.Context, conn *odb.Client, id string) (*odbtypes.OdbPeeringConnection, error) {
 	input := odb.GetOdbPeeringConnectionInput{
 		OdbPeeringConnectionId: &id,
@@ -410,18 +407,6 @@ func findNetworkPeeringConnectionByID(ctx context.Context, conn *odb.Client, id 
 	return out.OdbPeeringConnection, nil
 }
 
-// TIP: ==== DATA STRUCTURES ====
-// With Terraform Plugin-Framework configurations are deserialized into
-// Go types, providing type safety without the need for type assertions.
-// These structs should match the schema definition exactly, and the `tfsdk`
-// tag value should match the attribute name.
-//
-// Nested objects are represented in their own basicExaInfraDataSource struct. These will
-// also have a corresponding attribute type mapping for use inside flex
-// functions.
-//
-// See more:
-// https://developer.hashicorp.com/terraform/plugin/framework/handling-data/accessing-values
 type odbNetworkPeeringConnectionResourceModel struct {
 	framework.WithRegionModel
 	OdbNetworkId             types.String                                `tfsdk:"odb_network_id"`
@@ -441,23 +426,6 @@ type odbNetworkPeeringConnectionResourceModel struct {
 	TagsAll                  tftags.Map                                  `tfsdk:"tags_all"`
 }
 
-// TIP: ==== SWEEPERS ====
-// When acceptance testing resources, interrupted or failed tests may
-// leave behind orphaned resources in an account. To facilitate cleaning
-// up lingering resources, each resource implementation should include
-// a corresponding "sweeper" function.
-//
-// The sweeper function lists all resources of a given type and sets the
-// appropriate identifers required to delete the resource via the Delete
-// method implemented above.
-//
-// Once the sweeper function is implemented, register it in sweeper.go
-// as follows:
-//
-//	awsv2.Register("aws_odb_network_peering_connection", sweepNetworkPeeringConnections)
-//
-// See more:
-// https://hashicorp.github.io/terraform-provider-aws/running-and-writing-acceptance-tests/#acceptance-test-sweepers
 func sweepNetworkPeeringConnections(ctx context.Context, client *conns.AWSClient) ([]sweep.Sweepable, error) {
 	input := odb.ListOdbPeeringConnectionsInput{}
 	conn := client.ODBClient(ctx)

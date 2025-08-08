@@ -9452,7 +9452,7 @@ service "odb" {
     human_friendly = "Oracle Database@AWS"
   }
   endpoint_info {
-    endpoint_api_call = "ListCloudExadataInfrastructures"
+    endpoint_api_call = "ListGiVersions"
     endpoint_region_overrides = {
       "aws" = "us-east-1"
     }
