@@ -75,6 +75,44 @@ func TestAccODBNetworkPeeringConnection_basic(t *testing.T) {
 	})
 }
 
+func TestAccODBNetworkPeeringHardCoded(t *testing.T) {
+	ctx := acctest.Context(t)
+
+	if testing.Short() {
+		t.Skip("skipping long-running test in short mode")
+	}
+
+	var odbPeeringResource odb.GetOdbPeeringConnectionOutput
+	odbPeeringDisplayName := sdkacctest.RandomWithPrefix(odbNwkPeeringTestResource.odbPeeringDisplayNamePrefix)
+
+	resourceName := "aws_odb_network_peering_connection.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acctest.PreCheck(ctx, t)
+			odbNwkPeeringTestResource.testAccPreCheck(ctx, t)
+		},
+		ErrorCheck:               acctest.ErrorCheck(t, names.ODBServiceID),
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
+		CheckDestroy:             odbNwkPeeringTestResource.testAccCheckNetworkPeeringConnectionDestroy(ctx),
+		Steps: []resource.TestStep{
+			{
+				Config: odbNwkPeeringTestResource.basicConfigHardCoded("vpc-06510b51513731b6f", "odbnet_3l9st3litg", odbPeeringDisplayName),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					testAccCheckNetworkPeeringConnectionExists(ctx, resourceName, &odbPeeringResource),
+					resource.TestCheckResourceAttr(resourceName, "tags.%", "1"),
+					resource.TestCheckResourceAttr(resourceName, "tags.env", "dev"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
 func TestAccODBNetworkPeeringConnectionAddRemoveTag(t *testing.T) {
 	ctx := acctest.Context(t)
 
@@ -297,4 +335,20 @@ resource "aws_odb_network_peering_connection" "test" {
  
 }
 `, vpcName, odbNetName, odbPeeringName)
+}
+
+func (odbNwkPeeringResourceTest) basicConfigHardCoded(vpcId, odbNetId, odbPeeringName string) string {
+	return fmt.Sprintf(`
+
+resource "aws_odb_network_peering_connection" "test" {
+  display_name = %[3]q
+  odb_network_id = %[2]q
+  peer_network_id = %[1]q
+  tags = {
+    "env"="dev"
+}
+}
+
+
+`, vpcId, odbNetId, odbPeeringName)
 }

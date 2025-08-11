@@ -465,30 +465,6 @@ resource "aws_odb_network" "test" {
 	return networkRes
 }
 
-func (autonomousVMClusterResourceTest) avmcWithMandatoryParamsWithTag(exaInfra, odbNetwork, avmcDisplayName string) string {
-	res := fmt.Sprintf(`
-%s
-
-%s
-
-resource "aws_odb_cloud_autonomous_vm_cluster" "test" {
-  	display_name             				= %[1]q
-    cloud_exadata_infrastructure_id         = "exa_ky7jabi90t"
-  	odb_network_id                          = "odbnet_fjey4b8oth"
-  	autonomous_data_storage_size_in_tbs     = 5
-  	memory_per_oracle_compute_unit_in_gbs   = 2
-  	total_container_databases               = 1
-  	cpu_core_count_per_node                 = 4
- 	tags = {
-    	"env"= "dev"
-  	}
-
-}
-`, exaInfra, odbNetwork, avmcDisplayName)
-
-	return res
-}
-
 func (autonomousVMClusterResourceTest) exaInfra(exaDisplayName string) string {
 	resource := fmt.Sprintf(`
 resource "aws_odb_cloud_exadata_infrastructure" "test" {
@@ -499,6 +475,17 @@ resource "aws_odb_cloud_exadata_infrastructure" "test" {
   availability_zone_id 	= "use1-az6"
   customer_contacts_to_send_to_oci = ["abc@example.com"]
   
+   maintenance_window = {
+  		custom_action_timeout_in_mins = 16
+		days_of_week =	[]
+        hours_of_day =	[]
+        is_custom_action_timeout_enabled = true
+        lead_time_in_weeks = 0
+        months = []
+        patching_mode = "ROLLING"
+        preference = "NO_PREFERENCE"
+		weeks_of_month =[]
+  }
 }
 `, exaDisplayName)
 

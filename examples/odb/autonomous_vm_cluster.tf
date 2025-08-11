@@ -1,6 +1,6 @@
-//Copyright © 2025, Oracle and/or its affiliates. All rights reserved.
+# Copyright © 2025, Oracle and/or its affiliates. All rights reserved.
 
-//Autonomous VM Cluster with default maintenance window and minimum parameters
+# Autonomous VM Cluster with default maintenance window and minimum parameters
 resource "aws_odb_cloud_autonomous_vm_cluster" "avmc_with_minimum_parameters" {
   cloud_exadata_infrastructure_id       = "<exadata_infra_id>" //refer your exadata infra id
   odb_network_id                        = "<odb_net_id>" //refer_your_odb_net_id
@@ -10,7 +10,7 @@ resource "aws_odb_cloud_autonomous_vm_cluster" "avmc_with_minimum_parameters" {
   total_container_databases             = 1
   cpu_core_count_per_node               = 40
   license_model                         = "LICENSE_INCLUDED"
-  //ids of db server. refer your exa infra. This is a manadatory fileld. Refer your cloud exadata infrastructure for db server id
+  # ids of db server. refer your exa infra. This is a manadatory fileld. Refer your cloud exadata infrastructure for db server id
   db_servers                            = ["<my_db_server_id>"]
   scan_listener_port_tls                = 8561
   scan_listener_port_non_tls            = 1024
@@ -25,7 +25,7 @@ resource "aws_odb_cloud_autonomous_vm_cluster" "avmc_with_minimum_parameters" {
 
 }
 
-//Autonomous VM Cluster with all parameters
+# Autonomous VM Cluster with all parameters
 resource "aws_odb_cloud_autonomous_vm_cluster" "test" {
   description                           = "my first avmc"
   time_zone                             = "UTC"
