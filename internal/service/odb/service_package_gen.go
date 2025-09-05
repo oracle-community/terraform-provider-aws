@@ -6,13 +6,8 @@ import (
 	"context"
 	"unique"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/retry"
-	"github.com/aws/aws-sdk-go-v2/service/odb"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	inttypes "github.com/hashicorp/terraform-provider-aws/internal/types"
-	"github.com/hashicorp/terraform-provider-aws/internal/vcr"
 	"github.com/hashicorp/terraform-provider-aws/names"
 )
 
@@ -42,6 +37,18 @@ func (p *servicePackage) FrameworkDataSources(ctx context.Context) []*inttypes.S
 			Factory:  newDataSourceCloudVmCluster,
 			TypeName: "aws_odb_cloud_vm_cluster",
 			Name:     "Cloud Vm Cluster",
+			Region:   unique.Make(inttypes.ResourceRegionDefault()),
+		},
+		{
+			Factory:  newDataSourceDbServer,
+			TypeName: "aws_odb_db_server",
+			Name:     "Db Server",
+			Region:   unique.Make(inttypes.ResourceRegionDefault()),
+		},
+		{
+			Factory:  newDataSourceDbServersList,
+			TypeName: "aws_odb_db_servers_list",
+			Name:     "Db Servers List",
 			Region:   unique.Make(inttypes.ResourceRegionDefault()),
 		},
 		{
@@ -122,52 +129,6 @@ func (p *servicePackage) SDKResources(ctx context.Context) []*inttypes.ServicePa
 
 func (p *servicePackage) ServicePackageName() string {
 	return names.ODB
-}
-
-// NewClient returns a new AWS SDK for Go v2 client for this service package's AWS API.
-func (p *servicePackage) NewClient(ctx context.Context, config map[string]any) (*odb.Client, error) {
-	cfg := *(config["aws_sdkv2_config"].(*aws.Config))
-	optFns := []func(*odb.Options){
-		odb.WithEndpointResolverV2(newEndpointResolverV2()),
-		withBaseEndpoint(config[names.AttrEndpoint].(string)),
-		func(o *odb.Options) {
-			if region := config[names.AttrRegion].(string); o.Region != region {
-				tflog.Info(ctx, "overriding provider-configured AWS API region", map[string]any{
-					"service":         p.ServicePackageName(),
-					"original_region": o.Region,
-					"override_region": region,
-				})
-				o.Region = region
-			}
-		},
-		func(o *odb.Options) {
-			if inContext, ok := conns.FromContext(ctx); ok && inContext.VCREnabled() {
-				tflog.Info(ctx, "overriding retry behavior to immediately return VCR errors")
-				o.Retryer = conns.AddIsErrorRetryables(cfg.Retryer().(aws.RetryerV2), retry.IsErrorRetryableFunc(vcr.InteractionNotFoundRetryableFunc))
-			}
-		},
-		withExtraOptions(ctx, p, config),
-	}
-
-	return odb.NewFromConfig(cfg, optFns...), nil
-}
-
-// withExtraOptions returns a functional option that allows this service package to specify extra API client options.
-// This option is always called after any generated options.
-func withExtraOptions(ctx context.Context, sp conns.ServicePackage, config map[string]any) func(*odb.Options) {
-	if v, ok := sp.(interface {
-		withExtraOptions(context.Context, map[string]any) []func(*odb.Options)
-	}); ok {
-		optFns := v.withExtraOptions(ctx, config)
-
-		return func(o *odb.Options) {
-			for _, optFn := range optFns {
-				optFn(o)
-			}
-		}
-	}
-
-	return func(*odb.Options) {}
 }
 
 func ServicePackage(ctx context.Context) conns.ServicePackage {

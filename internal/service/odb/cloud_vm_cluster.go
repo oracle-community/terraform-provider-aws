@@ -5,10 +5,6 @@ package odb
 import (
 	"context"
 	"errors"
-	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
-	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"strings"
 	"time"
 
@@ -16,14 +12,19 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/odb"
 	odbtypes "github.com/aws/aws-sdk-go-v2/service/odb/types"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/float64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int32planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-provider-aws/internal/create"
@@ -59,6 +60,7 @@ var ResourceCloudVmCluster = newResourceCloudVmCluster
 type resourceCloudVmCluster struct {
 	framework.ResourceWithModel[cloudVmClusterResourceModel]
 	framework.WithTimeouts
+	framework.WithImportByID
 }
 
 func (r *resourceCloudVmCluster) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -391,6 +393,7 @@ func (r *resourceCloudVmCluster) Create(ctx context.Context, req resource.Create
 
 	createTimeout := r.CreateTimeout(ctx, plan.Timeouts)
 	createdVmCluster, err := waitCloudVmClusterCreated(ctx, conn, *out.CloudVmClusterId, createTimeout)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root(names.AttrID), aws.ToString(out.CloudVmClusterId))...)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			create.ProblemStandardMessage(names.ODB, create.ErrActionWaitingForCreation, ResNameCloudVmCluster, plan.DisplayName.ValueString(), err),
@@ -401,6 +404,8 @@ func (r *resourceCloudVmCluster) Create(ctx context.Context, req resource.Create
 	hostnamePrefix := strings.Split(*input.Hostname, "-")[0]
 	plan.HostnamePrefix = types.StringValue(hostnamePrefix)
 	plan.HostnamePrefixComputed = types.StringValue(*createdVmCluster.Hostname)
+	//scan listener port not returned by API directly
+	plan.ScanListenerPortTcp = types.Int32PointerValue(createdVmCluster.ListenerPort)
 	resp.Diagnostics.Append(flex.Flatten(ctx, createdVmCluster, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -432,8 +437,10 @@ func (r *resourceCloudVmCluster) Read(ctx context.Context, req resource.ReadRequ
 	hostnamePrefix := strings.Split(*out.Hostname, "-")[0]
 	state.HostnamePrefix = types.StringValue(hostnamePrefix)
 	state.HostnamePrefixComputed = types.StringValue(*out.Hostname)
-	resp.Diagnostics.Append(flex.Flatten(ctx, out, &state)...)
+	//scan listener port not returned by API directly
+	state.ScanListenerPortTcp = types.Int32PointerValue(out.ListenerPort)
 
+	resp.Diagnostics.Append(flex.Flatten(ctx, out, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -492,24 +499,6 @@ func waitCloudVmClusterCreated(ctx context.Context, conn *odb.Client, id string,
 	return nil, err
 }
 
-func waitCloudVmClusterUpdated(ctx context.Context, conn *odb.Client, id string, timeout time.Duration) (*odbtypes.CloudVmCluster, error) {
-	stateConf := &retry.StateChangeConf{
-		Pending:                   enum.Slice(odbtypes.ResourceStatusUpdating),
-		Target:                    enum.Slice(odbtypes.ResourceStatusAvailable, odbtypes.ResourceStatusFailed),
-		Refresh:                   statusCloudVmCluster(ctx, conn, id),
-		Timeout:                   timeout,
-		NotFoundChecks:            20,
-		ContinuousTargetOccurence: 2,
-	}
-
-	outputRaw, err := stateConf.WaitForStateContext(ctx)
-	if out, ok := outputRaw.(*odbtypes.CloudVmCluster); ok {
-		return out, err
-	}
-
-	return nil, err
-}
-
 func waitCloudVmClusterDeleted(ctx context.Context, conn *odb.Client, id string, timeout time.Duration) (*odbtypes.CloudVmCluster, error) {
 	stateConf := &retry.StateChangeConf{
 		Pending: enum.Slice(odbtypes.ResourceStatusTerminating),
@@ -545,7 +534,6 @@ func FindCloudVmClusterForResourceByID(ctx context.Context, conn *odb.Client, id
 	input := odb.GetCloudVmClusterInput{
 		CloudVmClusterId: aws.String(id),
 	}
-
 	out, err := conn.GetCloudVmCluster(ctx, &input)
 	if err != nil {
 		if errs.IsA[*odbtypes.ResourceNotFoundException](err) {
@@ -554,7 +542,6 @@ func FindCloudVmClusterForResourceByID(ctx context.Context, conn *odb.Client, id
 				LastRequest: &input,
 			}
 		}
-
 		return nil, err
 	}
 
@@ -566,51 +553,51 @@ func FindCloudVmClusterForResourceByID(ctx context.Context, conn *odb.Client, id
 
 type cloudVmClusterResourceModel struct {
 	framework.WithRegionModel
-	CloudVmClusterArn            types.String                                                            `tfsdk:"arn"`
-	CloudExadataInfrastructureId types.String                                                            `tfsdk:"cloud_exadata_infrastructure_id"`
-	CloudVmClusterId             types.String                                                            `tfsdk:"id"`
-	ClusterName                  types.String                                                            `tfsdk:"cluster_name"`
-	CpuCoreCount                 types.Int32                                                             `tfsdk:"cpu_core_count"`
-	DataCollectionOptions        fwtypes.ObjectValueOf[cloudVMCDataCollectionOptionsResourceModel]       `tfsdk:"data_collection_options"`
-	DataStorageSizeInTBs         types.Float64                                                           `tfsdk:"data_storage_size_in_tbs"`
-	DbNodeStorageSizeInGBs       types.Int32                                                             `tfsdk:"db_node_storage_size_in_gbs"`
-	DbServers                    fwtypes.SetValueOf[types.String]                                        `tfsdk:"db_servers"`
-	DiskRedundancy               fwtypes.StringEnum[odbtypes.DiskRedundancy]                             `tfsdk:"disk_redundancy"`
-	DisplayName                  types.String                                                            `tfsdk:"display_name"`
-	Domain                       types.String                                                            `tfsdk:"domain"`
-	GiVersion                    types.String                                                            `tfsdk:"gi_version"`
-	HostnamePrefixComputed       types.String                                                            `tfsdk:"hostname_prefix_computed" autoflex:",noflatten"`
-	HostnamePrefix               types.String                                                            `tfsdk:"hostname_prefix" autoflex:"-"`
-	IormConfigCache              fwtypes.ListNestedObjectValueOf[cloudVMCExadataIormConfigResourceModel] `tfsdk:"iorm_config_cache"`
-	IsLocalBackupEnabled         types.Bool                                                              `tfsdk:"is_local_backup_enabled"`
-	IsSparseDiskGroupEnabled     types.Bool                                                              `tfsdk:"is_sparse_diskgroup_enabled"`
-	LastUpdateHistoryEntryId     types.String                                                            `tfsdk:"last_update_history_entry_id"`
-	LicenseModel                 fwtypes.StringEnum[odbtypes.LicenseModel]                               `tfsdk:"license_model"`
-	ListenerPort                 types.Int32                                                             `tfsdk:"listener_port"`
-	MemorySizeInGbs              types.Int32                                                             `tfsdk:"memory_size_in_gbs"`
-	NodeCount                    types.Int32                                                             `tfsdk:"node_count"`
-	Ocid                         types.String                                                            `tfsdk:"ocid"`
-	OciResourceAnchorName        types.String                                                            `tfsdk:"oci_resource_anchor_name"`
-	OciUrl                       types.String                                                            `tfsdk:"oci_url"`
-	OdbNetworkId                 types.String                                                            `tfsdk:"odb_network_id"`
-	PercentProgress              types.Float32                                                           `tfsdk:"percent_progress"`
-	ScanDnsName                  types.String                                                            `tfsdk:"scan_dns_name"`
-	ScanDnsRecordId              types.String                                                            `tfsdk:"scan_dns_record_id"`
-	ScanIpIds                    fwtypes.ListValueOf[types.String]                                       `tfsdk:"scan_ip_ids"`
-	Shape                        types.String                                                            `tfsdk:"shape"`
-	SshPublicKeys                fwtypes.SetValueOf[types.String]                                        `tfsdk:"ssh_public_keys"`
-	Status                       fwtypes.StringEnum[odbtypes.ResourceStatus]                             `tfsdk:"status"`
-	StatusReason                 types.String                                                            `tfsdk:"status_reason"`
-	StorageSizeInGBs             types.Int32                                                             `tfsdk:"storage_size_in_gbs"`
-	SystemVersion                types.String                                                            `tfsdk:"system_version"`
-	Timeouts                     timeouts.Value                                                          `tfsdk:"timeouts"`
-	Timezone                     types.String                                                            `tfsdk:"timezone"`
-	VipIds                       fwtypes.ListValueOf[types.String]                                       `tfsdk:"vip_ids"`
-	CreatedAt                    timetypes.RFC3339                                                       `tfsdk:"created_at"`
-	ComputeModel                 fwtypes.StringEnum[odbtypes.ComputeModel]                               `tfsdk:"compute_model"`
-	ScanListenerPortTcp          types.Int32                                                             `tfsdk:"scan_listener_port_tcp"`
-	Tags                         tftags.Map                                                              `tfsdk:"tags"`
-	TagsAll                      tftags.Map                                                              `tfsdk:"tags_all"`
+	CloudVmClusterArn            types.String                                                                `tfsdk:"arn"`
+	CloudExadataInfrastructureId types.String                                                                `tfsdk:"cloud_exadata_infrastructure_id"`
+	CloudVmClusterId             types.String                                                                `tfsdk:"id"`
+	ClusterName                  types.String                                                                `tfsdk:"cluster_name"`
+	CpuCoreCount                 types.Int32                                                                 `tfsdk:"cpu_core_count"`
+	DataCollectionOptions        fwtypes.ListNestedObjectValueOf[cloudVMCDataCollectionOptionsResourceModel] `tfsdk:"data_collection_options"`
+	DataStorageSizeInTBs         types.Float64                                                               `tfsdk:"data_storage_size_in_tbs"`
+	DbNodeStorageSizeInGBs       types.Int32                                                                 `tfsdk:"db_node_storage_size_in_gbs"`
+	DbServers                    fwtypes.SetValueOf[types.String]                                            `tfsdk:"db_servers"`
+	DiskRedundancy               fwtypes.StringEnum[odbtypes.DiskRedundancy]                                 `tfsdk:"disk_redundancy"`
+	DisplayName                  types.String                                                                `tfsdk:"display_name"`
+	Domain                       types.String                                                                `tfsdk:"domain"`
+	GiVersion                    types.String                                                                `tfsdk:"gi_version"`
+	HostnamePrefixComputed       types.String                                                                `tfsdk:"hostname_prefix_computed" autoflex:",noflatten"`
+	HostnamePrefix               types.String                                                                `tfsdk:"hostname_prefix" autoflex:"-"`
+	IormConfigCache              fwtypes.ListNestedObjectValueOf[cloudVMCExadataIormConfigResourceModel]     `tfsdk:"iorm_config_cache"`
+	IsLocalBackupEnabled         types.Bool                                                                  `tfsdk:"is_local_backup_enabled"`
+	IsSparseDiskGroupEnabled     types.Bool                                                                  `tfsdk:"is_sparse_diskgroup_enabled"`
+	LastUpdateHistoryEntryId     types.String                                                                `tfsdk:"last_update_history_entry_id"`
+	LicenseModel                 fwtypes.StringEnum[odbtypes.LicenseModel]                                   `tfsdk:"license_model"`
+	ListenerPort                 types.Int32                                                                 `tfsdk:"listener_port"`
+	MemorySizeInGbs              types.Int32                                                                 `tfsdk:"memory_size_in_gbs"`
+	NodeCount                    types.Int32                                                                 `tfsdk:"node_count"`
+	Ocid                         types.String                                                                `tfsdk:"ocid"`
+	OciResourceAnchorName        types.String                                                                `tfsdk:"oci_resource_anchor_name"`
+	OciUrl                       types.String                                                                `tfsdk:"oci_url"`
+	OdbNetworkId                 types.String                                                                `tfsdk:"odb_network_id"`
+	PercentProgress              types.Float32                                                               `tfsdk:"percent_progress"`
+	ScanDnsName                  types.String                                                                `tfsdk:"scan_dns_name"`
+	ScanDnsRecordId              types.String                                                                `tfsdk:"scan_dns_record_id"`
+	ScanIpIds                    fwtypes.ListValueOf[types.String]                                           `tfsdk:"scan_ip_ids"`
+	Shape                        types.String                                                                `tfsdk:"shape"`
+	SshPublicKeys                fwtypes.SetValueOf[types.String]                                            `tfsdk:"ssh_public_keys"`
+	Status                       fwtypes.StringEnum[odbtypes.ResourceStatus]                                 `tfsdk:"status"`
+	StatusReason                 types.String                                                                `tfsdk:"status_reason"`
+	StorageSizeInGBs             types.Int32                                                                 `tfsdk:"storage_size_in_gbs"`
+	SystemVersion                types.String                                                                `tfsdk:"system_version"`
+	Timeouts                     timeouts.Value                                                              `tfsdk:"timeouts"`
+	Timezone                     types.String                                                                `tfsdk:"timezone"`
+	VipIds                       fwtypes.ListValueOf[types.String]                                           `tfsdk:"vip_ids"`
+	CreatedAt                    timetypes.RFC3339                                                           `tfsdk:"created_at"`
+	ComputeModel                 fwtypes.StringEnum[odbtypes.ComputeModel]                                   `tfsdk:"compute_model"`
+	ScanListenerPortTcp          types.Int32                                                                 `tfsdk:"scan_listener_port_tcp" autoflex:",noflatten"`
+	Tags                         tftags.Map                                                                  `tfsdk:"tags"`
+	TagsAll                      tftags.Map                                                                  `tfsdk:"tags_all"`
 }
 
 type cloudVMCDataCollectionOptionsResourceModel struct {

@@ -6044,7 +6044,9 @@ service "odb" {
   endpoint_info {
     endpoint_api_call = "ListCloudExadataInfrastructures"
   }
-
+  client{
+    skip_client_generate = true
+  }
   resource_prefix {
     correct = "aws_odb_"
   }
