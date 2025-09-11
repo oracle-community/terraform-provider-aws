@@ -4,6 +4,7 @@ package odb
 
 import (
 	"context"
+	tftags "github.com/hashicorp/terraform-provider-aws/internal/tags"
 
 	"github.com/aws/aws-sdk-go-v2/service/odb"
 	odbtypes "github.com/aws/aws-sdk-go-v2/service/odb/types"
@@ -19,6 +20,7 @@ import (
 )
 
 // @FrameworkDataSource("aws_odb_cloud_vm_cluster", name="Cloud Vm Cluster")
+// @Tags(identifierAttribute="arn")
 func newDataSourceCloudVmCluster(context.Context) (datasource.DataSourceWithConfigure, error) {
 	return &dataSourceCloudVmCluster{}, nil
 }
@@ -218,6 +220,7 @@ func (d *dataSourceCloudVmCluster) Schema(ctx context.Context, req datasource.Sc
 				CustomType:  fwtypes.NewListNestedObjectTypeOf[exadataIormConfigVMCDataSourceModel](ctx),
 				Description: "The ExadataIormConfig cache details for the VM cluster.",
 			},
+			names.AttrTags: tftags.TagsAttributeComputedOnly(),
 		},
 	}
 }
@@ -291,6 +294,7 @@ type dataSourceCloudVmClusterModel struct {
 	VipIds                       fwtypes.ListValueOf[types.String]                                        `tfsdk:"vip_ids"`
 	CreatedAt                    timetypes.RFC3339                                                        `tfsdk:"created_at"`
 	ComputeModel                 fwtypes.StringEnum[odbtypes.ComputeModel]                                `tfsdk:"compute_model"`
+	Tags                         tftags.Map                                                               `tfsdk:"tags"`
 }
 
 type dataCollectionOptionsVMCDataSourceModel struct {

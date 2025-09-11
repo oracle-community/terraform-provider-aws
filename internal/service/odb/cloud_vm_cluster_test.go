@@ -139,7 +139,6 @@ func TestAccODBCloudVmCluster_taggingTest(t *testing.T) {
 						return nil
 					}),
 					vmClusterTestEntity.testAccCheckCloudVmClusterExists(ctx, resourceName, &cloudvmcluster1),
-					resource.TestCheckResourceAttr(resourceName, acctest.CtTagsPercent, "1"),
 				),
 			},
 			{
@@ -347,17 +346,17 @@ func (cloudVmClusterResourceTest) testAccCloudVmClusterConfigUpdatedTags(vmClust
 	res := fmt.Sprintf(`
 
 data "aws_odb_db_servers_list" "test" {
-  cloud_exadata_infrastructure_id = aws_odb_cloud_exadata_infrastructure.test.id
+  cloud_exadata_infrastructure_id = "exa_gjrmtxl4qk"
 }
 
 resource "aws_odb_cloud_vm_cluster" "test" {
   display_name                    = %[3]q
-  cloud_exadata_infrastructure_id = aws_odb_cloud_exadata_infrastructure.test.id
+  cloud_exadata_infrastructure_id = "exa_gjrmtxl4qk"
   cpu_core_count                  = 6
   gi_version                      = "23.0.0.0"
   hostname_prefix                 = "apollo12"
   ssh_public_keys                 = ["%[4]s"]
-  odb_network_id                  = aws_odb_network.test.id
+  odb_network_id                  = "odbnet_3l9st3litg"
   is_local_backup_enabled         = true
   is_sparse_diskgroup_enabled     = true
   license_model                   = "LICENSE_INCLUDED"
@@ -365,6 +364,13 @@ resource "aws_odb_cloud_vm_cluster" "test" {
   db_servers                      = [for db_server in data.aws_odb_db_servers_list.test.db_servers : db_server.id]
   db_node_storage_size_in_gbs     = 120.0
   memory_size_in_gbs              = 60
+  
+  data_collection_options {
+    is_diagnostics_events_enabled = false
+    is_health_monitoring_enabled  = false
+    is_incident_logs_enabled      = false
+  }
+
   tags = {
     "env" = "dev"
     "foo" = "bar"

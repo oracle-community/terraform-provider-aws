@@ -129,41 +129,20 @@ func (cloudVmClusterDSTest) cloudVMClusterConfig(odbNet, exaInfra, displayName, 
 	dsTfCodeVmCluster := fmt.Sprintf(`
 
 
-resource "aws_odb_network" "test" {
-  display_name         = %[1]q
-  availability_zone_id = "use1-az6"
-  client_subnet_cidr   = "10.2.0.0/24"
-  backup_subnet_cidr   = "10.2.1.0/24"
-  s3_access            = "DISABLED"
-  zero_etl_access      = "DISABLED"
-}
 
-resource "aws_odb_cloud_exadata_infrastructure" "test" {
-  display_name         = %[1]q
-  shape                = "Exadata.X9M"
-  storage_count        = 3
-  compute_count        = 2
-  availability_zone_id = "use1-az6"
-  maintenance_window {
-    custom_action_timeout_in_mins    = 16
-    is_custom_action_timeout_enabled = true
-    patching_mode                    = "ROLLING"
-    preference                       = "NO_PREFERENCE"
-  }
-}
 
 data "aws_odb_db_servers_list" "test" {
-  cloud_exadata_infrastructure_id = aws_odb_cloud_exadata_infrastructure.test.id
+  cloud_exadata_infrastructure_id = "exa_gjrmtxl4qk"
 }
 
 resource "aws_odb_cloud_vm_cluster" "test" {
   display_name                    = %[3]q
-  cloud_exadata_infrastructure_id = aws_odb_cloud_exadata_infrastructure.test.id
+  cloud_exadata_infrastructure_id = "exa_gjrmtxl4qk"
   cpu_core_count                  = 6
   gi_version                      = "23.0.0.0"
   hostname_prefix                 = "apollo12"
   ssh_public_keys                 = ["%[4]s"]
-  odb_network_id                  = aws_odb_network.test.id
+  odb_network_id                  = "odbnet_3l9st3litg"
   is_local_backup_enabled         = true
   is_sparse_diskgroup_enabled     = true
   license_model                   = "LICENSE_INCLUDED"
@@ -171,6 +150,11 @@ resource "aws_odb_cloud_vm_cluster" "test" {
   db_servers                      = [for db_server in data.aws_odb_db_servers_list.test.db_servers : db_server.id]
   db_node_storage_size_in_gbs     = 120.0
   memory_size_in_gbs              = 60
+  data_collection_options {
+    is_diagnostics_events_enabled = false
+    is_health_monitoring_enabled  = false
+    is_incident_logs_enabled      = false
+  }
   tags = {
     "env" = "dev"
   }
