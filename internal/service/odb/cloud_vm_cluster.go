@@ -1,4 +1,5 @@
-//Copyright © 2025, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
 
 package odb
 
@@ -327,7 +328,7 @@ func (r *resourceCloudVmCluster) Schema(ctx context.Context, req resource.Schema
 				CustomType: fwtypes.NewListNestedObjectTypeOf[cloudVMCDataCollectionOptionsResourceModel](ctx),
 				Validators: []validator.List{
 					listvalidator.SizeAtMost(1),
-					listvalidator.SizeAtLeast(0),
+					listvalidator.IsRequired(),
 				},
 				PlanModifiers: []planmodifier.List{
 					listplanmodifier.RequiresReplace(),
