@@ -1,4 +1,5 @@
-// Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
 
 package odb_test
 
@@ -274,17 +275,16 @@ func (autonomousVMClusterResourceTest) avmcBasic() string {
 	exaInfraRes := autonomousVMClusterResourceTestEntity.exaInfra(exaInfraDisplayName, emailAddress)
 	odbNetRes := autonomousVMClusterResourceTestEntity.oracleDBNetwork(odbNetworkDisplayName)
 	res := fmt.Sprintf(`
-%s
 
-%s
+
 
 data "aws_odb_db_servers_list" "test" {
-  cloud_exadata_infrastructure_id = aws_odb_cloud_exadata_infrastructure.test.id
+  cloud_exadata_infrastructure_id = "exa_gjrmtxl4qk"
 }
 
 resource "aws_odb_cloud_autonomous_vm_cluster" "test" {
-  cloud_exadata_infrastructure_id       = aws_odb_cloud_exadata_infrastructure.test.id
-  odb_network_id                        = aws_odb_network.test.id
+  cloud_exadata_infrastructure_id       = "exa_gjrmtxl4qk"
+  odb_network_id                        = "odbnet_3l9st3litg"
   display_name                          = %[3]q
   autonomous_data_storage_size_in_tbs   = 5
   memory_per_oracle_compute_unit_in_gbs = 2
@@ -317,17 +317,15 @@ func (autonomousVMClusterResourceTest) avmcNoTagWithTag() (string, string) {
 	exaInfraRes := autonomousVMClusterResourceTestEntity.exaInfra(exaInfraDisplayName, emailAddress)
 	odbNetRes := autonomousVMClusterResourceTestEntity.oracleDBNetwork(odbNetworkDisplayName)
 	noTag := fmt.Sprintf(`
-%s
 
-%s
 
 data "aws_odb_db_servers_list" "test" {
-  cloud_exadata_infrastructure_id = aws_odb_cloud_exadata_infrastructure.test.id
+  cloud_exadata_infrastructure_id = "exa_gjrmtxl4qk"
 }
 
 resource "aws_odb_cloud_autonomous_vm_cluster" "test" {
-  cloud_exadata_infrastructure_id       = aws_odb_cloud_exadata_infrastructure.test.id
-  odb_network_id                        = aws_odb_network.test.id
+  cloud_exadata_infrastructure_id       = "exa_gjrmtxl4qk"
+  odb_network_id                        = "odbnet_3l9st3litg"
   display_name                          = %[3]q
   autonomous_data_storage_size_in_tbs   = 5
   memory_per_oracle_compute_unit_in_gbs = 2
@@ -348,17 +346,14 @@ resource "aws_odb_cloud_autonomous_vm_cluster" "test" {
 
 `, exaInfraRes, odbNetRes, avmcDisplayName)
 	withTag := fmt.Sprintf(`
-%s
-
-%s
 
 data "aws_odb_db_servers_list" "test" {
-  cloud_exadata_infrastructure_id = aws_odb_cloud_exadata_infrastructure.test.id
+  cloud_exadata_infrastructure_id = "exa_gjrmtxl4qk"
 }
 
 resource "aws_odb_cloud_autonomous_vm_cluster" "test" {
-  cloud_exadata_infrastructure_id       = aws_odb_cloud_exadata_infrastructure.test.id
-  odb_network_id                        = aws_odb_network.test.id
+  cloud_exadata_infrastructure_id       = "exa_gjrmtxl4qk"
+  odb_network_id                        = "odbnet_3l9st3litg"
   display_name                          = %[3]q
   autonomous_data_storage_size_in_tbs   = 5
   memory_per_oracle_compute_unit_in_gbs = 2
@@ -394,19 +389,17 @@ func (autonomousVMClusterResourceTest) avmcAllParamsConfig() string {
 	exaInfraRes := autonomousVMClusterResourceTestEntity.exaInfra(exaInfraDisplayName, emailAddress)
 	odbNetRes := autonomousVMClusterResourceTestEntity.oracleDBNetwork(odbNetworkDisplayName)
 	res := fmt.Sprintf(`
-%s
 
-%s
 
 data "aws_odb_db_servers_list" "test" {
-  cloud_exadata_infrastructure_id = aws_odb_cloud_exadata_infrastructure.test.id
+  cloud_exadata_infrastructure_id = "exa_gjrmtxl4qk"
 }
 
 resource "aws_odb_cloud_autonomous_vm_cluster" "test" {
   description                           = "my first avmc"
   time_zone                             = "UTC"
-  cloud_exadata_infrastructure_id       = aws_odb_cloud_exadata_infrastructure.test.id
-  odb_network_id                        = aws_odb_network.test.id
+  cloud_exadata_infrastructure_id       = "exa_gjrmtxl4qk"
+  odb_network_id                        = "odbnet_3l9st3litg"
   display_name                          = %[3]q
   autonomous_data_storage_size_in_tbs   = 5
   memory_per_oracle_compute_unit_in_gbs = 2
