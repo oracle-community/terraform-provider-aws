@@ -28,7 +28,7 @@ type oracleDBNetworkResourceTest struct {
 }
 
 var oracleDBNetworkResourceTestEntity = oracleDBNetworkResourceTest{
-	displayNamePrefix: "Ofake-tf-ora-net",
+	displayNamePrefix: "tf-ora-net",
 }
 
 // Basic test with bare minimum input
@@ -39,6 +39,8 @@ func TestAccODBNetworkResource_basic(t *testing.T) {
 	}
 	importStateVerifyIgnore := []string{
 		"delete_associated_resources",
+		"cross_region_s3_restore_sources_to_enable",
+		"cross_region_s3_restore_sources_to_disable",
 	}
 	var network odbtypes.OdbNetwork
 	rName := sdkacctest.RandomWithPrefix(oracleDBNetworkResourceTestEntity.displayNamePrefix)
@@ -75,6 +77,8 @@ func TestAccODBNetworkResource_withAllParams(t *testing.T) {
 	}
 	importStateVerifyIgnore := []string{
 		"delete_associated_resources",
+		"cross_region_s3_restore_sources_to_enable",
+		"cross_region_s3_restore_sources_to_disable",
 	}
 	var network1 odbtypes.OdbNetwork
 	rName := sdkacctest.RandomWithPrefix(oracleDBNetworkResourceTestEntity.displayNamePrefix)
@@ -112,6 +116,8 @@ func TestAccODBNetworkResource_updateManagedService(t *testing.T) {
 	}
 	importStateVerifyIgnore := []string{
 		"delete_associated_resources",
+		"cross_region_s3_restore_sources_to_enable",
+		"cross_region_s3_restore_sources_to_disable",
 	}
 	var network1, network2 odbtypes.OdbNetwork
 	rName := sdkacctest.RandomWithPrefix(oracleDBNetworkResourceTestEntity.displayNamePrefix)
@@ -167,6 +173,8 @@ func TestAccODBNetworkResource_disableManagedService(t *testing.T) {
 	}
 	importStateVerifyIgnore := []string{
 		"delete_associated_resources",
+		"cross_region_s3_restore_sources_to_enable",
+		"cross_region_s3_restore_sources_to_disable",
 	}
 	var network1, network2 odbtypes.OdbNetwork
 	rName := sdkacctest.RandomWithPrefix(oracleDBNetworkResourceTestEntity.displayNamePrefix)
@@ -222,6 +230,8 @@ func TestAccODBNetworkResource_updateTags(t *testing.T) {
 	}
 	importStateVerifyIgnore := []string{
 		"delete_associated_resources",
+		"cross_region_s3_restore_sources_to_enable",
+		"cross_region_s3_restore_sources_to_disable",
 	}
 	var network1, network2 odbtypes.OdbNetwork
 	rName := sdkacctest.RandomWithPrefix(oracleDBNetworkResourceTestEntity.displayNamePrefix)
@@ -305,6 +315,8 @@ func TestAccODBNetworkResource_updateDeleteAssociatedResource(t *testing.T) {
 	}
 	importStateVerifyIgnore := []string{
 		"delete_associated_resources",
+		"cross_region_s3_restore_sources_to_enable",
+		"cross_region_s3_restore_sources_to_disable",
 	}
 	var network1, network2 odbtypes.OdbNetwork
 	rName := sdkacctest.RandomWithPrefix(oracleDBNetworkResourceTestEntity.displayNamePrefix)
@@ -431,6 +443,7 @@ resource "aws_odb_network" "test" {
   zero_etl_access             = "DISABLED"
   sts_access                  = "DISABLED"
   kms_access                  = "DISABLED"
+  cross_region_s3_restore_sources_to_enable = ["us-west-2"]
   delete_associated_resources = true
 }
 
