@@ -592,7 +592,6 @@ resource "aws_odb_network_peering_connection" "test" {
 }
 
 func (oracleDBNwkPeeringResourceTest) addRemovePeeredNetworkCIDRConfig(vpcName, odbNetName, odbPeeringName string) (string, string, string) {
-
 	odbPeeringBasic := fmt.Sprintf(`
 
 
