@@ -87,7 +87,6 @@ func TestOdbNetworkAddRemovePeerCIDRUnitTest(t *testing.T) {
 			} else {
 				t.Error("addRemoveCidrs was nil")
 			}
-
 		})
 	}
 }
@@ -702,7 +701,6 @@ resource "aws_ec2_transit_gateway_vpc_attachment" "test" {
 
 
 `, vpcName)
-
 }
 
 func (oracleDBNwkPeeringResourceTest) oracleDataBaseNetworkConfig(displayName string) string {
@@ -719,7 +717,6 @@ resource "aws_odb_network" "test" {
 }
 
 func (oracleDBNwkPeeringResourceTest) basicConfigWithMultiplePeerCIDR(vpcName, networkName, peerNetworkConnectionName string) (string, string) {
-
 	peeringWithTags := fmt.Sprintf(`
  %[1]s
 
