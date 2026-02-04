@@ -597,13 +597,15 @@ func (oracleDBNwkPeeringResourceTest) addRemovePeeredNetworkCidrConfig(vpcName, 
 	odbPeeringBasic := fmt.Sprintf(`
 
 
+
+
 %[1]s
 
 %[2]s
 
 resource "aws_odb_network_peering_connection" "test" {
   display_name    = %[3]q
-  depends_on = [aws_ec2_transit_gateway_vpc_attachment.test]
+  depends_on      = [aws_ec2_transit_gateway_vpc_attachment.test]
   odb_network_id  = aws_odb_network.test.id
   peer_network_id = aws_vpc.test.id
 }
@@ -613,16 +615,19 @@ resource "aws_odb_network_peering_connection" "test" {
 
 
 
+
+
+
 %[1]s
 
 %[2]s
 
 resource "aws_odb_network_peering_connection" "test" {
-  display_name    = %[3]q
-  odb_network_id  = aws_odb_network.test.id
-depends_on = [aws_ec2_transit_gateway_vpc_attachment.test]
-  peer_network_id = aws_vpc.test.id
-  peer_network_cidrs = ["13.0.0.0/16"]	
+  display_name       = %[3]q
+  odb_network_id     = aws_odb_network.test.id
+  depends_on         = [aws_ec2_transit_gateway_vpc_attachment.test]
+  peer_network_id    = aws_vpc.test.id
+  peer_network_cidrs = ["13.0.0.0/16"]
 
 }
 `, oracleDBNwkPeeringTestResource.vpcConfigForAddRemoveCidr(vpcName), oracleDBNwkPeeringTestResource.odbNetworkConfig(odbNetName), odbPeeringName)
@@ -631,16 +636,19 @@ depends_on = [aws_ec2_transit_gateway_vpc_attachment.test]
 
 
 
+
+
+
 %[1]s
 
 %[2]s
 
 resource "aws_odb_network_peering_connection" "test" {
-  display_name    = %[3]q
-  odb_network_id  = aws_odb_network.test.id
-depends_on = [aws_ec2_transit_gateway_vpc_attachment.test]
-  peer_network_id = aws_vpc.test.id
-  peer_network_cidrs = ["13.0.0.0/16","16.1.0.0/16"]	
+  display_name       = %[3]q
+  odb_network_id     = aws_odb_network.test.id
+  depends_on         = [aws_ec2_transit_gateway_vpc_attachment.test]
+  peer_network_id    = aws_vpc.test.id
+  peer_network_cidrs = ["13.0.0.0/16", "16.1.0.0/16"]
 
 }
 `, oracleDBNwkPeeringTestResource.vpcConfigForAddRemoveCidr(vpcName), oracleDBNwkPeeringTestResource.odbNetworkConfig(odbNetName), odbPeeringName)
@@ -648,8 +656,7 @@ depends_on = [aws_ec2_transit_gateway_vpc_attachment.test]
 }
 
 func (oracleDBNwkPeeringResourceTest) vpcConfigForAddRemoveCidr(vpcName string) string {
-	return fmt.Sprintf(
-		`
+	return fmt.Sprintf(`
 resource "aws_vpc" "test" {
   cidr_block = "13.0.0.0/16"
 
@@ -665,7 +672,7 @@ resource "aws_vpc_ipv4_cidr_block_association" "secondary" {
 
 # Subnets in primary CIDR
 resource "aws_subnet" "secondary_a" {
-depends_on = [
+  depends_on = [
     aws_vpc_ipv4_cidr_block_association.secondary
   ]
   vpc_id            = aws_vpc.test.id
@@ -688,29 +695,28 @@ resource "aws_ec2_transit_gateway_vpc_attachment" "test" {
 }
 
 
+
+
 `, vpcName)
 
 }
 
 func (oracleDBNwkPeeringResourceTest) odbNetworkConfig(displayName string) string {
-	return fmt.Sprintf(
-		`
+	return fmt.Sprintf(`
 resource "aws_odb_network" "test" {
-		display_name         = %[1]q
-		availability_zone_id = "use1-az6"
-		client_subnet_cidr   = "10.2.0.0/24"
-		backup_subnet_cidr   = "10.2.1.0/24"
-		s3_access            = "DISABLED"
-		zero_etl_access      = "DISABLED"
-	}
+  display_name         = %[1]q
+  availability_zone_id = "use1-az6"
+  client_subnet_cidr   = "10.2.0.0/24"
+  backup_subnet_cidr   = "10.2.1.0/24"
+  s3_access            = "DISABLED"
+  zero_etl_access      = "DISABLED"
+}
 `, displayName)
 }
 
 func (oracleDBNwkPeeringResourceTest) basicConfigWithMultiplePeerCidr(vpcName, networkName, peerNetworkConnectionName string) (string, string) {
 
-	peeringWithTags := fmt.Sprintf(
-
-		`
+	peeringWithTags := fmt.Sprintf(`
  %[1]s
 
 resource "aws_vpc" "test" {
@@ -729,22 +735,22 @@ resource "aws_vpc_ipv4_cidr_block_association" "tertiary" {
 }
 
 resource "aws_odb_network_peering_connection" "test" {
-odb_network_id  = aws_odb_network.test.id
+  odb_network_id  = aws_odb_network.test.id
   display_name    = %[3]q
-depends_on = [aws_vpc_ipv4_cidr_block_association.secondary, aws_vpc_ipv4_cidr_block_association.tertiary]
+  depends_on      = [aws_vpc_ipv4_cidr_block_association.secondary, aws_vpc_ipv4_cidr_block_association.tertiary]
   peer_network_id = aws_vpc.test.id
-tags = {
+  tags = {
     "env" = "dev"
   }
 
 }
+
+
 
 
 `, oracleDBNwkPeeringTestResource.odbNetworkConfig(networkName), vpcName, peerNetworkConnectionName)
 
-	peeringWithoutTags := fmt.Sprintf(
-
-		`
+	peeringWithoutTags := fmt.Sprintf(`
  %[1]s
 
 resource "aws_vpc" "test" {
@@ -763,16 +769,18 @@ resource "aws_vpc_ipv4_cidr_block_association" "tertiary" {
 }
 
 resource "aws_odb_network_peering_connection" "test" {
-odb_network_id  = aws_odb_network.test.id
-  display_name    = %[3]q
-depends_on = [aws_vpc_ipv4_cidr_block_association.secondary, aws_vpc_ipv4_cidr_block_association.tertiary]
-  peer_network_id = aws_vpc.test.id
-peer_network_cidrs = ["13.0.0.0/16","16.1.0.0/16"]
-tags = {
+  odb_network_id     = aws_odb_network.test.id
+  display_name       = %[3]q
+  depends_on         = [aws_vpc_ipv4_cidr_block_association.secondary, aws_vpc_ipv4_cidr_block_association.tertiary]
+  peer_network_id    = aws_vpc.test.id
+  peer_network_cidrs = ["13.0.0.0/16", "16.1.0.0/16"]
+  tags = {
     "env" = "dev"
   }
 
 }
+
+
 
 
 `, oracleDBNwkPeeringTestResource.odbNetworkConfig(networkName), vpcName, peerNetworkConnectionName)
