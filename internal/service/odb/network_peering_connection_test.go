@@ -675,8 +675,8 @@ resource "aws_subnet" "secondary_a" {
   depends_on = [
     aws_vpc_ipv4_cidr_block_association.secondary
   ]
-  vpc_id            = aws_vpc.test.id
-  cidr_block        = "16.1.1.0/24"
+  vpc_id               = aws_vpc.test.id
+  cidr_block           = "16.1.1.0/24"
   availability_zone_id = "use1-az6"
 
   tags = {
@@ -693,6 +693,10 @@ resource "aws_ec2_transit_gateway_vpc_attachment" "test" {
   vpc_id             = aws_vpc.test.id
   subnet_ids         = [aws_subnet.secondary_a.id]
 }
+
+
+
+
 
 
 
