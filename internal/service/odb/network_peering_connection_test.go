@@ -261,7 +261,7 @@ func TestAccODBNetworkPeeringConnection_addRemovePeeredCidr(t *testing.T) {
 	vpcName := sdkacctest.RandomWithPrefix(oracleDBNwkPeeringTestResource.vpcNamePrefix)
 	odbNetName := sdkacctest.RandomWithPrefix(oracleDBNwkPeeringTestResource.odbNwkDisplayNamePrefix)
 	resourceName := "aws_odb_network_peering_connection.test"
-	basicConfig, removedCidr, addedCidr := oracleDBNwkPeeringTestResource.addPeeredNetworkCidrConfig(vpcName, odbNetName, odbPeeringDisplayName)
+	basicConfig, removedCidr, addedCidr := oracleDBNwkPeeringTestResource.addRemovePeeredNetworkCidrConfig(vpcName, odbNetName, odbPeeringDisplayName)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -306,6 +306,59 @@ func TestAccODBNetworkPeeringConnection_addRemovePeeredCidr(t *testing.T) {
 					testAccCheckNetworkPeeringConnectionExists(ctx, resourceName, &peering3),
 					resource.ComposeTestCheckFunc(func(state *terraform.State) error {
 						if strings.Compare(*(peering1.OdbPeeringConnection.OdbPeeringConnectionId), *(peering3.OdbPeeringConnection.OdbPeeringConnectionId)) != 0 {
+							return errors.New("should not  create a new odb network peering connection")
+						}
+						return nil
+					}),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccODBNetworkPeeringConnection_removePeeredCidrWithTagUpdate(t *testing.T) {
+	ctx := acctest.Context(t)
+
+	if testing.Short() {
+		t.Skip("skipping long-running test in short mode")
+	}
+	vpcName := sdkacctest.RandomWithPrefix(oracleDBNwkPeeringTestResource.vpcNamePrefix)
+	odbNetName := sdkacctest.RandomWithPrefix(oracleDBNwkPeeringTestResource.odbNwkDisplayNamePrefix)
+	resourceName := "aws_odb_network_peering_connection.test"
+	var peering1, peering2 odb.GetOdbPeeringConnectionOutput
+	basicConfig, removedCidr := oracleDBNwkPeeringTestResource.basicConfigWithMultiplePeerCidr(vpcName, odbNetName, resourceName)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acctest.PreCheck(ctx, t)
+			oracleDBNwkPeeringTestResource.testAccPreCheck(ctx, t)
+		},
+		ErrorCheck:               acctest.ErrorCheck(t, names.ODBServiceID),
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
+		CheckDestroy:             oracleDBNwkPeeringTestResource.testAccCheckNetworkPeeringConnectionDestroy(ctx),
+		Steps: []resource.TestStep{
+			{
+				Config: basicConfig,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					testAccCheckNetworkPeeringConnectionExists(ctx, resourceName, &peering1),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: removedCidr,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					testAccCheckNetworkPeeringConnectionExists(ctx, resourceName, &peering2),
+					resource.ComposeTestCheckFunc(func(state *terraform.State) error {
+						if strings.Compare(*(peering1.OdbPeeringConnection.OdbPeeringConnectionId), *(peering2.OdbPeeringConnection.OdbPeeringConnectionId)) != 0 {
 							return errors.New("should not  create a new odb network peering connection")
 						}
 						return nil
@@ -539,7 +592,7 @@ resource "aws_odb_network_peering_connection" "test" {
 `, vpcName, odbNetName, odbPeeringName)
 }
 
-func (oracleDBNwkPeeringResourceTest) addPeeredNetworkCidrConfig(vpcName, odbNetName, odbPeeringName string) (string, string, string) {
+func (oracleDBNwkPeeringResourceTest) addRemovePeeredNetworkCidrConfig(vpcName, odbNetName, odbPeeringName string) (string, string, string) {
 
 	odbPeeringBasic := fmt.Sprintf(`
 
@@ -651,4 +704,78 @@ resource "aws_odb_network" "test" {
 		zero_etl_access      = "DISABLED"
 	}
 `, displayName)
+}
+
+func (oracleDBNwkPeeringResourceTest) basicConfigWithMultiplePeerCidr(vpcName, networkName, peerNetworkConnectionName string) (string, string) {
+
+	peeringWithTags := fmt.Sprintf(
+
+		`
+ %[1]s
+
+resource "aws_vpc" "test" {
+  cidr_block = "13.0.0.0/16"
+  tags = {
+    Name = %[2]q
+  }
+}
+resource "aws_vpc_ipv4_cidr_block_association" "secondary" {
+  vpc_id     = aws_vpc.test.id
+  cidr_block = "16.1.0.0/16"
+}
+resource "aws_vpc_ipv4_cidr_block_association" "tertiary" {
+  vpc_id     = aws_vpc.test.id
+  cidr_block = "19.1.0.0/16"
+}
+
+resource "aws_odb_network_peering_connection" "test" {
+odb_network_id  = aws_odb_network.test.id
+  display_name    = %[3]q
+depends_on = [aws_vpc_ipv4_cidr_block_association.secondary, aws_vpc_ipv4_cidr_block_association.tertiary]
+  peer_network_id = aws_vpc.test.id
+tags = {
+    "env" = "dev"
+  }
+
+}
+
+
+`, oracleDBNwkPeeringTestResource.odbNetworkConfig(networkName), vpcName, peerNetworkConnectionName)
+
+	peeringWithoutTags := fmt.Sprintf(
+
+		`
+ %[1]s
+
+resource "aws_vpc" "test" {
+  cidr_block = "13.0.0.0/16"
+  tags = {
+    Name = %[2]q
+  }
+}
+resource "aws_vpc_ipv4_cidr_block_association" "secondary" {
+  vpc_id     = aws_vpc.test.id
+  cidr_block = "16.1.0.0/16"
+}
+resource "aws_vpc_ipv4_cidr_block_association" "tertiary" {
+  vpc_id     = aws_vpc.test.id
+  cidr_block = "19.1.0.0/16"
+}
+
+resource "aws_odb_network_peering_connection" "test" {
+odb_network_id  = aws_odb_network.test.id
+  display_name    = %[3]q
+depends_on = [aws_vpc_ipv4_cidr_block_association.secondary, aws_vpc_ipv4_cidr_block_association.tertiary]
+  peer_network_id = aws_vpc.test.id
+peer_network_cidrs = ["13.0.0.0/16","16.1.0.0/16"]
+tags = {
+    "env" = "dev"
+  }
+
+}
+
+
+`, oracleDBNwkPeeringTestResource.odbNetworkConfig(networkName), vpcName, peerNetworkConnectionName)
+
+	return peeringWithTags, peeringWithoutTags
 }
