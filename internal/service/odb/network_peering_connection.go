@@ -360,13 +360,13 @@ func (r *resourceNetworkPeeringConnection) Update(ctx context.Context, req resou
 			var removedPeeredCidrs []string
 
 			for k, v := range addedRemovedCidrs {
-				if v == -1 {
+				switch v {
+				case -1:
 					removedPeeredCidrs = append(removedPeeredCidrs, k)
-				} else if v == 1 {
+				case 1:
 					addedPeeredCidrs = append(addedPeeredCidrs, k)
 				}
 			}
-
 			if len(removedPeeredCidrs) > 0 {
 				input.PeerNetworkCidrsToBeRemoved = removedPeeredCidrs
 			}
