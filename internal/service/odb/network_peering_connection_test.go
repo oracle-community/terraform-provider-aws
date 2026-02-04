@@ -38,7 +38,7 @@ var oracleDBNwkPeeringTestResource = oracleDBNwkPeeringResourceTest{
 	odbNwkDisplayNamePrefix:     "odb-net",
 }
 
-func TestOdbNetworkAddRemovePerredCidrsUnitTest(t *testing.T) {
+func TestOdbNetworkAddRemovePeerCIDRUnitTest(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
@@ -76,7 +76,7 @@ func TestOdbNetworkAddRemovePerredCidrsUnitTest(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.TestName, func(t *testing.T) {
 			t.Parallel()
-			addRemoveCidrs := tfodb.ResourceNetworkPeeringConnection.FindAddRemovePeeredNetworkCidrs(testCase.NewCidrs, testCase.OldCidrs)
+			addRemoveCidrs := tfodb.ResourceNetworkPeeringConnection.FindAddRemovePeeredNetworkCIDR(testCase.NewCidrs, testCase.OldCidrs)
 			if addRemoveCidrs != nil {
 				if len(addRemoveCidrs) != len(testCase.AddRemoveCidrs) {
 					t.Fatalf("expected %d addRemoveCidrs, got %d", len(testCase.AddRemoveCidrs), len(addRemoveCidrs))
@@ -249,7 +249,7 @@ func TestAccODBNetworkPeeringConnection_tagging(t *testing.T) {
 	})
 }
 
-func TestAccODBNetworkPeeringConnection_addRemovePeeredCidr(t *testing.T) {
+func TestAccODBNetworkPeeringConnection_addRemovePeeredCIDR(t *testing.T) {
 	ctx := acctest.Context(t)
 
 	if testing.Short() {
@@ -261,7 +261,7 @@ func TestAccODBNetworkPeeringConnection_addRemovePeeredCidr(t *testing.T) {
 	vpcName := sdkacctest.RandomWithPrefix(oracleDBNwkPeeringTestResource.vpcNamePrefix)
 	odbNetName := sdkacctest.RandomWithPrefix(oracleDBNwkPeeringTestResource.odbNwkDisplayNamePrefix)
 	resourceName := "aws_odb_network_peering_connection.test"
-	basicConfig, removedCidr, addedCidr := oracleDBNwkPeeringTestResource.addRemovePeeredNetworkCidrConfig(vpcName, odbNetName, odbPeeringDisplayName)
+	basicConfig, removedCidr, addedCidr := oracleDBNwkPeeringTestResource.addRemovePeeredNetworkCIDRConfig(vpcName, odbNetName, odbPeeringDisplayName)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -321,7 +321,7 @@ func TestAccODBNetworkPeeringConnection_addRemovePeeredCidr(t *testing.T) {
 	})
 }
 
-func TestAccODBNetworkPeeringConnection_removePeeredCidrWithTagUpdate(t *testing.T) {
+func TestAccODBNetworkPeeringConnection_updateTagAndRemovePeeredCIDR(t *testing.T) {
 	ctx := acctest.Context(t)
 
 	if testing.Short() {
@@ -331,7 +331,7 @@ func TestAccODBNetworkPeeringConnection_removePeeredCidrWithTagUpdate(t *testing
 	odbNetName := sdkacctest.RandomWithPrefix(oracleDBNwkPeeringTestResource.odbNwkDisplayNamePrefix)
 	resourceName := "aws_odb_network_peering_connection.test"
 	var peering1, peering2 odb.GetOdbPeeringConnectionOutput
-	basicConfig, removedCidr := oracleDBNwkPeeringTestResource.basicConfigWithMultiplePeerCidr(vpcName, odbNetName, resourceName)
+	basicConfig, removedCidr := oracleDBNwkPeeringTestResource.basicConfigWithMultiplePeerCIDR(vpcName, odbNetName, resourceName)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -592,7 +592,7 @@ resource "aws_odb_network_peering_connection" "test" {
 `, vpcName, odbNetName, odbPeeringName)
 }
 
-func (oracleDBNwkPeeringResourceTest) addRemovePeeredNetworkCidrConfig(vpcName, odbNetName, odbPeeringName string) (string, string, string) {
+func (oracleDBNwkPeeringResourceTest) addRemovePeeredNetworkCIDRConfig(vpcName, odbNetName, odbPeeringName string) (string, string, string) {
 
 	odbPeeringBasic := fmt.Sprintf(`
 
@@ -609,7 +609,7 @@ resource "aws_odb_network_peering_connection" "test" {
   odb_network_id  = aws_odb_network.test.id
   peer_network_id = aws_vpc.test.id
 }
-`, oracleDBNwkPeeringTestResource.vpcConfigForAddRemoveCidr(vpcName), oracleDBNwkPeeringTestResource.oracleDbNetworkConfig(odbNetName), odbPeeringName)
+`, oracleDBNwkPeeringTestResource.configVPCForAddRemoveCIDR(vpcName), oracleDBNwkPeeringTestResource.oracleDataBaseNetworkConfig(odbNetName), odbPeeringName)
 
 	odbPeeringRemoved := fmt.Sprintf(`
 
@@ -630,7 +630,7 @@ resource "aws_odb_network_peering_connection" "test" {
   peer_network_cidrs = ["13.0.0.0/16"]
 
 }
-`, oracleDBNwkPeeringTestResource.vpcConfigForAddRemoveCidr(vpcName), oracleDBNwkPeeringTestResource.oracleDbNetworkConfig(odbNetName), odbPeeringName)
+`, oracleDBNwkPeeringTestResource.configVPCForAddRemoveCIDR(vpcName), oracleDBNwkPeeringTestResource.oracleDataBaseNetworkConfig(odbNetName), odbPeeringName)
 
 	odbPeeringAdded := fmt.Sprintf(`
 
@@ -651,11 +651,11 @@ resource "aws_odb_network_peering_connection" "test" {
   peer_network_cidrs = ["13.0.0.0/16", "16.1.0.0/16"]
 
 }
-`, oracleDBNwkPeeringTestResource.vpcConfigForAddRemoveCidr(vpcName), oracleDBNwkPeeringTestResource.oracleDbNetworkConfig(odbNetName), odbPeeringName)
+`, oracleDBNwkPeeringTestResource.configVPCForAddRemoveCIDR(vpcName), oracleDBNwkPeeringTestResource.oracleDataBaseNetworkConfig(odbNetName), odbPeeringName)
 	return odbPeeringBasic, odbPeeringRemoved, odbPeeringAdded
 }
 
-func (oracleDBNwkPeeringResourceTest) vpcConfigForAddRemoveCidr(vpcName string) string {
+func (oracleDBNwkPeeringResourceTest) configVPCForAddRemoveCIDR(vpcName string) string {
 	return fmt.Sprintf(`
 resource "aws_vpc" "test" {
   cidr_block = "13.0.0.0/16"
@@ -701,7 +701,7 @@ resource "aws_ec2_transit_gateway_vpc_attachment" "test" {
 
 }
 
-func (oracleDBNwkPeeringResourceTest) oracleDbNetworkConfig(displayName string) string {
+func (oracleDBNwkPeeringResourceTest) oracleDataBaseNetworkConfig(displayName string) string {
 	return fmt.Sprintf(`
 resource "aws_odb_network" "test" {
   display_name         = %[1]q
@@ -714,7 +714,7 @@ resource "aws_odb_network" "test" {
 `, displayName)
 }
 
-func (oracleDBNwkPeeringResourceTest) basicConfigWithMultiplePeerCidr(vpcName, networkName, peerNetworkConnectionName string) (string, string) {
+func (oracleDBNwkPeeringResourceTest) basicConfigWithMultiplePeerCIDR(vpcName, networkName, peerNetworkConnectionName string) (string, string) {
 
 	peeringWithTags := fmt.Sprintf(`
  %[1]s
@@ -748,7 +748,7 @@ resource "aws_odb_network_peering_connection" "test" {
 
 
 
-`, oracleDBNwkPeeringTestResource.oracleDbNetworkConfig(networkName), vpcName, peerNetworkConnectionName)
+`, oracleDBNwkPeeringTestResource.oracleDataBaseNetworkConfig(networkName), vpcName, peerNetworkConnectionName)
 
 	peeringWithoutTags := fmt.Sprintf(`
  %[1]s
@@ -783,7 +783,7 @@ resource "aws_odb_network_peering_connection" "test" {
 
 
 
-`, oracleDBNwkPeeringTestResource.oracleDbNetworkConfig(networkName), vpcName, peerNetworkConnectionName)
+`, oracleDBNwkPeeringTestResource.oracleDataBaseNetworkConfig(networkName), vpcName, peerNetworkConnectionName)
 
 	return peeringWithTags, peeringWithoutTags
 }

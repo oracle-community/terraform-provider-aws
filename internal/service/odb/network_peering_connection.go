@@ -354,7 +354,7 @@ func (r *resourceNetworkPeeringConnection) Update(ctx context.Context, req resou
 		plan.PeerNetworkCidrs.ElementsAs(ctx, &planPeeredCidrs, false)
 		var statePeeredCidrs []string
 		state.PeerNetworkCidrs.ElementsAs(ctx, &statePeeredCidrs, false)
-		addedRemovedCidrs := r.FindAddRemovePeeredNetworkCidrs(planPeeredCidrs, statePeeredCidrs)
+		addedRemovedCidrs := r.FindAddRemovePeeredNetworkCIDR(planPeeredCidrs, statePeeredCidrs)
 		if len(addedRemovedCidrs) > 0 {
 			var addedPeeredCidrs []string
 			var removedPeeredCidrs []string
@@ -439,10 +439,10 @@ func (r *resourceNetworkPeeringConnection) Delete(ctx context.Context, req resou
 	}
 }
 
-func (r *resourceNetworkPeeringConnection) FindAddRemovePeeredNetworkCidrs(planCidrs, sateCiders []string) map[string]int {
+func (r *resourceNetworkPeeringConnection) FindAddRemovePeeredNetworkCIDR(planCIDRs, sateCiders []string) map[string]int {
 	addedRemovedCidrs := make(map[string]int)
 	//1 indicates newly added cidrs. Here we are assuming that all cidrs are new.
-	for _, nCidr := range planCidrs {
+	for _, nCidr := range planCIDRs {
 		addedRemovedCidrs[nCidr] = 1
 	}
 	//Now lets remove those which are not present
