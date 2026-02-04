@@ -677,7 +677,7 @@ resource "aws_subnet" "secondary_a" {
   ]
   vpc_id            = aws_vpc.test.id
   cidr_block        = "16.1.1.0/24"
-  availability_zone = "us-east-1d"
+  availability_zone_id = "use1-az6"
 
   tags = {
     Name = "secondary_a"
