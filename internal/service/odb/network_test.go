@@ -488,13 +488,14 @@ func (oracleDBNetworkResourceTest) basicNetworkWithActiveManagedService(rName st
 
 
 resource "aws_odb_network" "test" {
-  display_name                = %[1]q
-  availability_zone_id        = "use1-az6"
-  client_subnet_cidr          = "10.2.0.0/24"
-  backup_subnet_cidr          = "10.2.1.0/24"
-  s3_access                   = "ENABLED"
-  zero_etl_access             = "ENABLED"
-  delete_associated_resources = true
+  display_name                           = %[1]q
+  availability_zone_id                   = "use1-az6"
+  client_subnet_cidr                     = "10.2.0.0/24"
+  backup_subnet_cidr                     = "10.2.1.0/24"
+  s3_access                              = "ENABLED"
+  zero_etl_access                        = "ENABLED"
+  cross_region_s3_restore_source_regions = ["us-west-2", "us-west-1"]
+  delete_associated_resources            = true
 }
 
 
@@ -515,14 +516,15 @@ func (oracleDBNetworkResourceTest) networkWithAllParams(rName, customDomainName 
 
 
 resource "aws_odb_network" "test" {
-  display_name                = %[1]q
-  availability_zone_id        = "use1-az6"
-  client_subnet_cidr          = "10.2.0.0/24"
-  backup_subnet_cidr          = "10.2.1.0/24"
-  s3_access                   = "DISABLED"
-  zero_etl_access             = "DISABLED"
-  custom_domain_name          = %[2]q
-  delete_associated_resources = true
+  display_name                           = %[1]q
+  availability_zone_id                   = "use1-az6"
+  client_subnet_cidr                     = "10.2.0.0/24"
+  backup_subnet_cidr                     = "10.2.1.0/24"
+  s3_access                              = "DISABLED"
+  zero_etl_access                        = "DISABLED"
+  cross_region_s3_restore_source_regions = ["us-west-2"]
+  custom_domain_name                     = %[2]q
+  delete_associated_resources            = true
 }
 
 
@@ -543,13 +545,14 @@ func (oracleDBNetworkResourceTest) updateNetworkTags(rName string) string {
 
 
 resource "aws_odb_network" "test" {
-  display_name                = %[1]q
-  availability_zone_id        = "use1-az6"
-  client_subnet_cidr          = "10.2.0.0/24"
-  backup_subnet_cidr          = "10.2.1.0/24"
-  s3_access                   = "DISABLED"
-  zero_etl_access             = "DISABLED"
-  delete_associated_resources = true
+  display_name                           = %[1]q
+  availability_zone_id                   = "use1-az6"
+  client_subnet_cidr                     = "10.2.0.0/24"
+  backup_subnet_cidr                     = "10.2.1.0/24"
+  s3_access                              = "DISABLED"
+  zero_etl_access                        = "DISABLED"
+  cross_region_s3_restore_source_regions = []
+  delete_associated_resources            = true
   tags = {
     "env" = "dev"
   }
