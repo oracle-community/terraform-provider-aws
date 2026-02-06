@@ -494,7 +494,7 @@ resource "aws_odb_network" "test" {
   backup_subnet_cidr                     = "10.2.1.0/24"
   s3_access                              = "ENABLED"
   zero_etl_access                        = "ENABLED"
-  cross_region_s3_restore_sources_access = ["us-west-1"]
+  cross_region_s3_restore_sources_access = ["us-west-2"]
   delete_associated_resources            = true
 }
 
