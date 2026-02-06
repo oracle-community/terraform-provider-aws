@@ -119,7 +119,7 @@ resource "aws_odb_network" "test_resource" {
   backup_subnet_cidr                     = "10.2.1.0/24"
   s3_access                              = "DISABLED"
   zero_etl_access                        = "DISABLED"
-  cross_region_s3_restore_source_regions = ["us-west-2", "us-west-1"]
+  cross_region_s3_restore_sources_access = ["us-west-2"]
   tags = {
     "env" = "dev"
   }

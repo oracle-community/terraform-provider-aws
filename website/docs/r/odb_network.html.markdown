@@ -61,7 +61,7 @@ The following arguments are optional:
 * `tags` - (Optional) A map of tags to assign to the exadata infrastructure. If configured with a provider [`default_tags` configuration block](https://registry.terraform.io/providers/hashicorp/aws/latest/docs#default_tags-configuration-block) present, tags with matching keys will overwrite those defined at the provider-level.
 * `region` - (Optional) Region where this resource will be [managed](https://docs.aws.amazon.com/general/latest/gr/rande.html#regional-endpoints). Defaults to the Region set in the [provider configuration](https://registry.terraform.io/providers/hashicorp/aws/latest/docs#aws-configuration-reference).
 * `delete_associated_resources` - (Optional) If set to true deletes associated OCI resources. Default false.
-* `cross_region_s3_restore_source_regions` - (Optional) The list of regions to be enabled for cross-region restore in the ODB network.
+* `cross_region_s3_restore_sources_access` - (Optional) The list of regions enabled for cross-region restore in the ODB network.
 
 ## Attribute Reference
 

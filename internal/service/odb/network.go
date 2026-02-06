@@ -173,7 +173,7 @@ func (r *resourceNetwork) Schema(ctx context.Context, req resource.SchemaRequest
 				PlanModifiers: []planmodifier.Set{
 					setplanmodifier.UseStateForUnknown(),
 				},
-				Description: "The list of regions to be enabled for cross-region restore in the ODB network.",
+				Description: "The list of regions enabled for cross-region restore in the ODB network.",
 			},
 			"oci_dns_forwarding_configs": schema.ListAttribute{
 				CustomType:  fwtypes.NewListNestedObjectTypeOf[odbNwkOciDnsForwardingConfigResourceModel](ctx),
@@ -268,7 +268,6 @@ func (r *resourceNetwork) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	// --- Cross-region restore sources (CREATE) ---
 	if !plan.CrossRegionS3RestoreSourcesAccess.IsNull() && !plan.CrossRegionS3RestoreSourcesAccess.IsUnknown() {
 		regions := []string{}
 		resp.Diagnostics.Append(
@@ -350,14 +349,14 @@ func (r *resourceNetwork) Create(ctx context.Context, req resource.CreateRequest
 	plan.S3PolicyDocument = types.StringPointerValue(createdOdbNetwork.ManagedServices.S3Access.S3PolicyDocument)
 
 	if createdOdbNetwork.ManagedServices != nil && createdOdbNetwork.ManagedServices.CrossRegionS3RestoreSourcesAccess != nil {
-		elems := make([]attr.Value, 0, len(createdOdbNetwork.ManagedServices.CrossRegionS3RestoreSourcesAccess))
+		elements := make([]attr.Value, 0, len(createdOdbNetwork.ManagedServices.CrossRegionS3RestoreSourcesAccess))
 		for _, src := range createdOdbNetwork.ManagedServices.CrossRegionS3RestoreSourcesAccess {
 			if src.Status == odbtypes.ManagedResourceStatusEnabled && src.Region != nil {
-				elems = append(elems, types.StringValue(aws.ToString(src.Region)))
+				elements = append(elements, types.StringValue(aws.ToString(src.Region)))
 			}
 		}
-		setVal, diags := fwtypes.NewSetValueOf[types.String](ctx, elems)
-		for _, d := range diags {
+		setVal, diagnostics := fwtypes.NewSetValueOf[types.String](ctx, elements)
+		for _, d := range diagnostics {
 			if d.Severity() == diag.SeverityError {
 				resp.Diagnostics.AddError(create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork,
 					plan.OdbNetworkId.String(), errors.New(d.Summary())), d.Detail())
@@ -468,7 +467,6 @@ func (r *resourceNetwork) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	// --- Cross-region restore sources (UPDATE) ---
 	var toEnable, toDisable []string
 	if !plan.CrossRegionS3RestoreSourcesAccess.Equal(state.CrossRegionS3RestoreSourcesAccess) {
 		var planSet, stateSet []string
