@@ -28,7 +28,7 @@ type oracleDBNetworkResourceTest struct {
 }
 
 var oracleDBNetworkResourceTestEntity = oracleDBNetworkResourceTest{
-	displayNamePrefix: "tf-ora-net",
+	displayNamePrefix: "Ofake-tf-ora-net",
 }
 
 // Basic test with bare minimum input
@@ -438,14 +438,16 @@ func (oracleDBNetworkResourceTest) basicNetwork(rName string) string {
 
 
 resource "aws_odb_network" "test" {
-  display_name                = %[1]q
-  availability_zone_id        = "use1-az6"
-  client_subnet_cidr          = "10.2.0.0/24"
-  backup_subnet_cidr          = "10.2.1.0/24"
-  s3_access                   = "DISABLED"
-  zero_etl_access             = "DISABLED"
+  display_name                           = %[1]q
+  availability_zone_id                   = "use1-az6"
+  client_subnet_cidr                     = "10.2.0.0/24"
+  backup_subnet_cidr                     = "10.2.1.0/24"
+  s3_access                              = "DISABLED"
+  zero_etl_access                        = "DISABLED"
+  sts_access                             = "DISABLED"
+  kms_access                             = "DISABLED"
   cross_region_s3_restore_sources_access = []
-  delete_associated_resources = true
+  delete_associated_resources            = true
 }
 
 
@@ -480,6 +482,8 @@ resource "aws_odb_network" "test" {
   backup_subnet_cidr   = "10.2.1.0/24"
   s3_access            = "DISABLED"
   zero_etl_access      = "DISABLED"
+  sts_access           = "DISABLED"
+  kms_access           = "DISABLED"
 }
 
 
@@ -510,6 +514,8 @@ resource "aws_odb_network" "test" {
   backup_subnet_cidr                     = "10.2.1.0/24"
   s3_access                              = "ENABLED"
   zero_etl_access                        = "ENABLED"
+  sts_access                             = "ENABLED"
+  kms_access                             = "ENABLED"
   cross_region_s3_restore_sources_access = ["us-west-2"]
   delete_associated_resources            = true
 }
@@ -538,6 +544,8 @@ resource "aws_odb_network" "test" {
   backup_subnet_cidr                     = "10.2.1.0/24"
   s3_access                              = "DISABLED"
   zero_etl_access                        = "DISABLED"
+  sts_access                             = "DISABLED"
+  kms_access                             = "DISABLED"
   cross_region_s3_restore_sources_access = ["us-west-2"]
   custom_domain_name                     = %[2]q
   delete_associated_resources            = true
@@ -567,6 +575,8 @@ resource "aws_odb_network" "test" {
   backup_subnet_cidr                     = "10.2.1.0/24"
   s3_access                              = "DISABLED"
   zero_etl_access                        = "DISABLED"
+  sts_access                             = "DISABLED"
+  kms_access                             = "DISABLED"
   cross_region_s3_restore_sources_access = []
   delete_associated_resources            = true
   tags = {
