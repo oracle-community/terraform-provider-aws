@@ -368,6 +368,81 @@ func TestAccODBNetworkResource_updateDeleteAssociatedResource(t *testing.T) {
 	})
 }
 
+func TestAccODBNetworkResource_updateCrossRegionRestore(t *testing.T) {
+	ctx := acctest.Context(t)
+	if testing.Short() {
+		t.Skip("skipping long-running test in short mode")
+	}
+	importStateVerifyIgnore := []string{
+		"delete_associated_resources",
+	}
+	var network1, network2 odbtypes.OdbNetwork
+	rName := sdkacctest.RandomWithPrefix(oracleDBNetworkResourceTestEntity.displayNamePrefix)
+	resourceName := "aws_odb_network.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acctest.PreCheck(ctx, t)
+			oracleDBNetworkResourceTestEntity.testAccPreCheck(ctx, t)
+		},
+		ErrorCheck:               acctest.ErrorCheck(t, names.ODBServiceID),
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
+		CheckDestroy:             oracleDBNetworkResourceTestEntity.testAccCheckNetworkDestroy(ctx),
+		Steps: []resource.TestStep{
+			{
+				Config: oracleDBNetworkResourceTestEntity.basicNetworkWithActiveManagedService(rName),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					oracleDBNetworkResourceTestEntity.testAccCheckNetworkExists(ctx, resourceName, &network1),
+					resource.TestCheckResourceAttr(
+						resourceName,
+						"cross_region_s3_restore_sources_access.#",
+						"1",
+					),
+					resource.TestCheckTypeSetElemAttr(
+						resourceName,
+						"cross_region_s3_restore_sources_access.*",
+						"us-west-2",
+					),
+				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importStateVerifyIgnore,
+			},
+			{
+				Config: oracleDBNetworkResourceTestEntity.updateNetworkCrossRegionRestore(rName),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					oracleDBNetworkResourceTestEntity.testAccCheckNetworkExists(ctx, resourceName, &network2),
+					resource.ComposeTestCheckFunc(func(state *terraform.State) error {
+						if strings.Compare(*(network1.OdbNetworkId), *(network2.OdbNetworkId)) != 0 {
+							return errors.New("should not  create a new cloud odb network")
+						}
+						return nil
+					}),
+					resource.TestCheckResourceAttr(
+						resourceName,
+						"cross_region_s3_restore_sources_access.#",
+						"1",
+					),
+					resource.TestCheckTypeSetElemAttr(
+						resourceName,
+						"cross_region_s3_restore_sources_access.*",
+						"us-east-2",
+					),
+				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importStateVerifyIgnore,
+			},
+		},
+	})
+}
+
 func (oracleDBNetworkResourceTest) testAccCheckNetworkDestroy(ctx context.Context) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		conn := acctest.Provider.Meta().(*conns.AWSClient).ODBClient(ctx)
@@ -583,6 +658,33 @@ resource "aws_odb_network" "test" {
     "env" = "dev"
   }
 }
+`, rName)
+	return networkRes
+}
+
+func (oracleDBNetworkResourceTest) updateNetworkCrossRegionRestore(rName string) string {
+	networkRes := fmt.Sprintf(`
+
+
+
+
+
+
+
+
+resource "aws_odb_network" "test" {
+  display_name                           = %[1]q
+  availability_zone_id                   = "use1-az6"
+  client_subnet_cidr                     = "10.2.0.0/24"
+  backup_subnet_cidr                     = "10.2.1.0/24"
+  s3_access                              = "ENABLED"
+  zero_etl_access                        = "ENABLED"
+  sts_access                             = "ENABLED"
+  kms_access                             = "ENABLED"
+  cross_region_s3_restore_sources_access = ["us-east-2"]
+  delete_associated_resources            = true
+}
+
 `, rName)
 	return networkRes
 }
