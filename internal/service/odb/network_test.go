@@ -93,6 +93,16 @@ func TestAccODBNetworkResource_withAllParams(t *testing.T) {
 				Config: oracleDBNetworkResourceTestEntity.networkWithAllParams(rName, "julia.com"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					oracleDBNetworkResourceTestEntity.testAccCheckNetworkExists(ctx, resourceName, &network1),
+					resource.TestCheckResourceAttr(
+						resourceName,
+						"cross_region_s3_restore_sources_access.#",
+						"1",
+					),
+					resource.TestCheckTypeSetElemAttr(
+						resourceName,
+						"cross_region_s3_restore_sources_access.*",
+						"us-west-2",
+					),
 				),
 			},
 			{
@@ -203,6 +213,11 @@ func TestAccODBNetworkResource_disableManagedService(t *testing.T) {
 						}
 						return nil
 					}),
+					resource.TestCheckResourceAttr(
+						resourceName,
+						"cross_region_s3_restore_sources_access.#",
+						"0",
+					),
 				),
 			},
 			{
@@ -429,6 +444,7 @@ resource "aws_odb_network" "test" {
   backup_subnet_cidr          = "10.2.1.0/24"
   s3_access                   = "DISABLED"
   zero_etl_access             = "DISABLED"
+  cross_region_s3_restore_sources_access = []
   delete_associated_resources = true
 }
 
