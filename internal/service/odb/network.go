@@ -404,12 +404,7 @@ func (r *resourceNetwork) Create(ctx context.Context, req resource.CreateRequest
 			}
 		}
 		setVal, diagnostics := fwtypes.NewSetValueOf[types.String](ctx, elements)
-		for _, d := range diagnostics {
-			if d.Severity() == diag.SeverityError {
-				resp.Diagnostics.AddError(create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork,
-					plan.OdbNetworkId.String(), errors.New(d.Summary())), d.Detail())
-			}
-		}
+		resp.Diagnostics.Append(diagnostics...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
@@ -495,20 +490,14 @@ func (r *resourceNetwork) Read(ctx context.Context, req resource.ReadRequest, re
 		state.KmsPolicyDocument = types.StringPointerValue(out.ManagedServices.KmsAccess.KmsPolicyDocument)
 
 		if out.ManagedServices.CrossRegionS3RestoreSourcesAccess != nil {
-			elems := make([]attr.Value, 0, len(out.ManagedServices.CrossRegionS3RestoreSourcesAccess))
+			elements := make([]attr.Value, 0, len(out.ManagedServices.CrossRegionS3RestoreSourcesAccess))
 			for _, src := range out.ManagedServices.CrossRegionS3RestoreSourcesAccess {
 				if src.Status == odbtypes.ManagedResourceStatusEnabled && src.Region != nil {
-					elems = append(elems, types.StringValue(aws.ToString(src.Region)))
+					elements = append(elements, types.StringValue(aws.ToString(src.Region)))
 				}
 			}
-
-			setVal, diagnostics := fwtypes.NewSetValueOf[types.String](ctx, elems)
-			for _, d := range diagnostics {
-				if d.Severity() == diag.SeverityError {
-					resp.Diagnostics.AddError(create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork,
-						state.OdbNetworkId.String(), errors.New(d.Summary())), d.Detail())
-				}
-			}
+			setVal, diagnostics := fwtypes.NewSetValueOf[types.String](ctx, elements)
+			resp.Diagnostics.Append(diagnostics...)
 			if resp.Diagnostics.HasError() {
 				return
 			}
@@ -537,39 +526,18 @@ func (r *resourceNetwork) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	var toEnable, toDisable []string
-	if !plan.CrossRegionS3RestoreSourcesAccess.Equal(state.CrossRegionS3RestoreSourcesAccess) {
-		var planSet, stateSet []string
-		resp.Diagnostics.Append(plan.CrossRegionS3RestoreSourcesAccess.ElementsAs(ctx, &planSet, false)...)
-		resp.Diagnostics.Append(state.CrossRegionS3RestoreSourcesAccess.ElementsAs(ctx, &stateSet, false)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		planMap := make(map[string]struct{}, len(planSet))
-		stateMap := make(map[string]struct{}, len(stateSet))
-		for _, r := range planSet {
-			planMap[r] = struct{}{}
-		}
-		for _, r := range stateSet {
-			stateMap[r] = struct{}{}
-		}
-		// plan - state = enable
-		for r := range planMap {
-			if _, exists := stateMap[r]; !exists {
-				toEnable = append(toEnable, r)
-			}
-		}
-		// state - plan = disable
-		for r := range stateMap {
-			if _, exists := planMap[r]; !exists {
-				toDisable = append(toDisable, r)
-			}
-		}
+	toEnable, toDisable, diagnostics := diffCrossRegionRestoreSources(ctx, plan.CrossRegionS3RestoreSourcesAccess, state.CrossRegionS3RestoreSourcesAccess)
+	resp.Diagnostics.Append(diagnostics...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	if diff.HasChanges() {
 		var input odb.UpdateOdbNetworkInput
 		resp.Diagnostics.Append(flex.Expand(ctx, plan, &input)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 		if len(toEnable) > 0 {
 			input.CrossRegionS3RestoreSourcesToEnable = toEnable
 		}
@@ -640,7 +608,7 @@ func (r *resourceNetwork) Update(ctx context.Context, req resource.UpdateRequest
 	plan.S3PolicyDocument = types.StringPointerValue(updatedOdbNwk.ManagedServices.S3Access.S3PolicyDocument)
 
 	//sts access
-	_, err = waitForManagedService(ctx, plan.ZeroEtlAccess.ValueEnum(), conn, plan.OdbNetworkId.ValueString(), managedServiceTimeout, func(managedService *odbtypes.ManagedServices) odbtypes.ManagedResourceStatus {
+	_, err = waitForManagedService(ctx, plan.StsAccess.ValueEnum(), conn, plan.OdbNetworkId.ValueString(), managedServiceTimeout, func(managedService *odbtypes.ManagedServices) odbtypes.ManagedResourceStatus {
 		return managedService.StsAccess.Status
 	})
 	if err != nil {
@@ -682,27 +650,27 @@ func (r *resourceNetwork) Update(ctx context.Context, req resource.UpdateRequest
 	}
 	plan.ZeroEtlAccess = fwtypes.StringEnumValue(readZeroEtlAccessStatus)
 
+	resp.Diagnostics.Append(flex.Flatten(ctx, updatedOdbNwk, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	//crossRegionRestore
 	if updatedOdbNwk.ManagedServices != nil && updatedOdbNwk.ManagedServices.CrossRegionS3RestoreSourcesAccess != nil {
-		elems := make([]attr.Value, 0, len(updatedOdbNwk.ManagedServices.CrossRegionS3RestoreSourcesAccess))
+		elements := make([]attr.Value, 0, len(updatedOdbNwk.ManagedServices.CrossRegionS3RestoreSourcesAccess))
 		for _, src := range updatedOdbNwk.ManagedServices.CrossRegionS3RestoreSourcesAccess {
 			if src.Status == odbtypes.ManagedResourceStatusEnabled && src.Region != nil {
-				elems = append(elems, types.StringValue(aws.ToString(src.Region)))
+				elements = append(elements, types.StringValue(aws.ToString(src.Region)))
 			}
 		}
-		setVal, diags := fwtypes.NewSetValueOf[types.String](ctx, elems)
-		for _, d := range diags {
-			if d.Severity() == diag.SeverityError {
-				resp.Diagnostics.AddError(create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork,
-					plan.OdbNetworkId.String(), errors.New(d.Summary())), d.Detail())
-			}
-		}
+		setVal, diags := fwtypes.NewSetValueOf[types.String](ctx, elements)
+		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
 		plan.CrossRegionS3RestoreSourcesAccess = setVal
 	}
 
-	resp.Diagnostics.Append(flex.Flatten(ctx, updatedOdbNwk, &plan)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -889,6 +857,45 @@ func FindOracleDBNetworkResourceByID(ctx context.Context, conn *odb.Client, id s
 	}
 
 	return out.OdbNetwork, nil
+}
+
+func diffCrossRegionRestoreSources(
+	ctx context.Context,
+	plan fwtypes.SetValueOf[types.String],
+	state fwtypes.SetValueOf[types.String],
+) (toEnable, toDisable []string, diags diag.Diagnostics) {
+	if plan.Equal(state) {
+		return nil, nil, nil
+	}
+
+	var planSet, stateSet []string
+	diags.Append(plan.ElementsAs(ctx, &planSet, false)...)
+	diags.Append(state.ElementsAs(ctx, &stateSet, false)...)
+	if diags.HasError() {
+		return nil, nil, diags
+	}
+
+	planMap := make(map[string]struct{}, len(planSet))
+	stateMap := make(map[string]struct{}, len(stateSet))
+
+	for _, r := range planSet {
+		planMap[r] = struct{}{}
+	}
+	for _, r := range stateSet {
+		stateMap[r] = struct{}{}
+	}
+
+	for r := range planMap {
+		if _, exists := stateMap[r]; !exists {
+			toEnable = append(toEnable, r)
+		}
+	}
+	for r := range stateMap {
+		if _, exists := planMap[r]; !exists {
+			toDisable = append(toDisable, r)
+		}
+	}
+	return toEnable, toDisable, diags
 }
 
 type odbNetworkResourceModel struct {
