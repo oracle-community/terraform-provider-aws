@@ -416,8 +416,8 @@ func TestAccODBNetworkResource_updateCrossRegionRestore(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					oracleDBNetworkResourceTestEntity.testAccCheckNetworkExists(ctx, resourceName, &network2),
 					resource.ComposeTestCheckFunc(func(state *terraform.State) error {
-						if strings.Compare(*(network1.OdbNetworkId), *(network2.OdbNetworkId)) != 0 {
-							return errors.New("should not  create a new cloud odb network")
+						if *(network1.OdbNetworkId) != *(network2.OdbNetworkId) {
+							return errors.New("should not create a new cloud odb network")
 						}
 						return nil
 					}),

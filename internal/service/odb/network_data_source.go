@@ -197,8 +197,8 @@ type odbNetworkManagedServicesDataSourceModel struct {
 	ManagedS3BackupAccess             fwtypes.ListNestedObjectValueOf[managedS3BackupAccessOdbNetworkDataSourceModel]             `tfsdk:"managed_s3_backup_access"`
 	ZeroEtlAccess                     fwtypes.ListNestedObjectValueOf[zeroEtlAccessOdbNetworkDataSourceModel]                     `tfsdk:"zero_tl_access"`
 	S3Access                          fwtypes.ListNestedObjectValueOf[s3AccessOdbNetworkDataSourceModel]                          `tfsdk:"s3_access"`
-	StsAccess                         fwtypes.ListNestedObjectValueOf[stsAccessOdbNetworkDataSourceModel]              `tfsdk:"sts_access"`
-	KmsAccess                         fwtypes.ListNestedObjectValueOf[kmsAccessOdbNetworkDataSourceModel]              `tfsdk:"kms_access"`
+	StsAccess                         fwtypes.ListNestedObjectValueOf[stsAccessOdbNetworkDataSourceModel]                         `tfsdk:"sts_access"`
+	KmsAccess                         fwtypes.ListNestedObjectValueOf[kmsAccessOdbNetworkDataSourceModel]                         `tfsdk:"kms_access"`
 	CrossRegionS3RestoreSourcesAccess fwtypes.ListNestedObjectValueOf[crossRegionS3RestoreSourcesAccessOdbNetworkDataSourceModel] `tfsdk:"cross_region_s3_restore_sources_access"`
 }
 
