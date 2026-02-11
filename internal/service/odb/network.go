@@ -294,8 +294,8 @@ func (r *resourceNetwork) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	if !plan.CrossRegionS3RestoreSourcesAccess.IsNull() && !plan.CrossRegionS3RestoreSourcesAccess.IsUnknown() {
-		regions := []string{}
+	if !plan.CrossRegionS3RestoreSourcesAccess.IsNull() {
+		var regions []string
 		resp.Diagnostics.Append(
 			plan.CrossRegionS3RestoreSourcesAccess.ElementsAs(ctx, &regions, false)...,
 		)
@@ -396,13 +396,17 @@ func (r *resourceNetwork) Create(ctx context.Context, req resource.CreateRequest
 	plan.KmsAccess = fwtypes.StringEnumValue(readKMSAccessStatus)
 	plan.KmsPolicyDocument = types.StringPointerValue(createdOdbNetwork.ManagedServices.KmsAccess.KmsPolicyDocument)
 
+	crossRegionErr := waitForCrossRegionRestoreSourcesStatus(ctx, conn, *out.OdbNetworkId, managedServiceTimeout)
+	if crossRegionErr != nil {
+		resp.Diagnostics.AddError(
+			create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork, plan.OdbNetworkId.String(), crossRegionErr),
+			crossRegionErr.Error(),
+		)
+		return
+	}
+
 	if createdOdbNetwork.ManagedServices != nil && createdOdbNetwork.ManagedServices.CrossRegionS3RestoreSourcesAccess != nil {
-		elements := make([]attr.Value, 0, len(createdOdbNetwork.ManagedServices.CrossRegionS3RestoreSourcesAccess))
-		for _, src := range createdOdbNetwork.ManagedServices.CrossRegionS3RestoreSourcesAccess {
-			if src.Status == odbtypes.ManagedResourceStatusEnabled && src.Region != nil {
-				elements = append(elements, types.StringValue(aws.ToString(src.Region)))
-			}
-		}
+		elements := enabledCrossRegionRestoreElements(createdOdbNetwork.ManagedServices.CrossRegionS3RestoreSourcesAccess)
 		setVal, diagnostics := fwtypes.NewSetValueOf[types.String](ctx, elements)
 		resp.Diagnostics.Append(diagnostics...)
 		if resp.Diagnostics.HasError() {
@@ -490,12 +494,7 @@ func (r *resourceNetwork) Read(ctx context.Context, req resource.ReadRequest, re
 		state.KmsPolicyDocument = types.StringPointerValue(out.ManagedServices.KmsAccess.KmsPolicyDocument)
 
 		if out.ManagedServices.CrossRegionS3RestoreSourcesAccess != nil {
-			elements := make([]attr.Value, 0, len(out.ManagedServices.CrossRegionS3RestoreSourcesAccess))
-			for _, src := range out.ManagedServices.CrossRegionS3RestoreSourcesAccess {
-				if src.Status == odbtypes.ManagedResourceStatusEnabled && src.Region != nil {
-					elements = append(elements, types.StringValue(aws.ToString(src.Region)))
-				}
-			}
+			elements := enabledCrossRegionRestoreElements(out.ManagedServices.CrossRegionS3RestoreSourcesAccess)
 			setVal, diagnostics := fwtypes.NewSetValueOf[types.String](ctx, elements)
 			resp.Diagnostics.Append(diagnostics...)
 			if resp.Diagnostics.HasError() {
@@ -526,15 +525,15 @@ func (r *resourceNetwork) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	toEnable, toDisable, diagnostics := diffCrossRegionRestoreSources(ctx, plan.CrossRegionS3RestoreSourcesAccess, state.CrossRegionS3RestoreSourcesAccess)
-	resp.Diagnostics.Append(diagnostics...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
 	if diff.HasChanges() {
 		var input odb.UpdateOdbNetworkInput
 		resp.Diagnostics.Append(flex.Expand(ctx, plan, &input)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		toEnable, toDisable, diagnostics := diffCrossRegionRestoreSources(ctx, plan.CrossRegionS3RestoreSourcesAccess, state.CrossRegionS3RestoreSourcesAccess)
+		resp.Diagnostics.Append(diagnostics...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
@@ -650,6 +649,15 @@ func (r *resourceNetwork) Update(ctx context.Context, req resource.UpdateRequest
 	}
 	plan.ZeroEtlAccess = fwtypes.StringEnumValue(readZeroEtlAccessStatus)
 
+	crossRegionErr := waitForCrossRegionRestoreSourcesStatus(ctx, conn, plan.OdbNetworkId.ValueString(), managedServiceTimeout)
+	if crossRegionErr != nil {
+		resp.Diagnostics.AddError(
+			create.ProblemStandardMessage(names.ODB, create.ErrActionWaitingForUpdate, ResNameNetwork, plan.OdbNetworkId.String(), crossRegionErr),
+			crossRegionErr.Error(),
+		)
+		return
+	}
+
 	resp.Diagnostics.Append(flex.Flatten(ctx, updatedOdbNwk, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -657,12 +665,7 @@ func (r *resourceNetwork) Update(ctx context.Context, req resource.UpdateRequest
 
 	//crossRegionRestore
 	if updatedOdbNwk.ManagedServices != nil && updatedOdbNwk.ManagedServices.CrossRegionS3RestoreSourcesAccess != nil {
-		elements := make([]attr.Value, 0, len(updatedOdbNwk.ManagedServices.CrossRegionS3RestoreSourcesAccess))
-		for _, src := range updatedOdbNwk.ManagedServices.CrossRegionS3RestoreSourcesAccess {
-			if src.Status == odbtypes.ManagedResourceStatusEnabled && src.Region != nil {
-				elements = append(elements, types.StringValue(aws.ToString(src.Region)))
-			}
-		}
+		elements := enabledCrossRegionRestoreElements(updatedOdbNwk.ManagedServices.CrossRegionS3RestoreSourcesAccess)
 		setVal, diags := fwtypes.NewSetValueOf[types.String](ctx, elements)
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {
@@ -762,6 +765,26 @@ func waitForManagedService(ctx context.Context, targetStatus odbtypes.Access, co
 	}
 }
 
+func waitForCrossRegionRestoreSourcesStatus(ctx context.Context, conn *odb.Client, id string, timeout time.Duration) error {
+	_, err := waitForManagedService(ctx, odbtypes.Access(odbtypes.ManagedResourceStatusEnabled), conn, id, timeout,
+		func(managedService *odbtypes.ManagedServices) odbtypes.ManagedResourceStatus {
+			if managedService.CrossRegionS3RestoreSourcesAccess == nil {
+				return odbtypes.ManagedResourceStatusEnabled
+			}
+			for _, src := range managedService.CrossRegionS3RestoreSourcesAccess {
+				switch src.Status {
+				case odbtypes.ManagedResourceStatusEnabled, odbtypes.ManagedResourceStatusDisabled:
+					continue
+				default:
+					return odbtypes.ManagedResourceStatusEnabling
+				}
+			}
+			return odbtypes.ManagedResourceStatusEnabled
+		},
+	)
+	return err
+}
+
 func statusManagedService(ctx context.Context, conn *odb.Client, id string, managedResourceStatus func(managedService *odbtypes.ManagedServices) odbtypes.ManagedResourceStatus) sdkretry.StateRefreshFunc {
 	return func() (any, string, error) {
 		out, err := FindOracleDBNetworkResourceByID(ctx, conn, id)
@@ -859,11 +882,7 @@ func FindOracleDBNetworkResourceByID(ctx context.Context, conn *odb.Client, id s
 	return out.OdbNetwork, nil
 }
 
-func diffCrossRegionRestoreSources(
-	ctx context.Context,
-	plan fwtypes.SetValueOf[types.String],
-	state fwtypes.SetValueOf[types.String],
-) (toEnable, toDisable []string, diags diag.Diagnostics) {
+func diffCrossRegionRestoreSources(ctx context.Context, plan fwtypes.SetValueOf[types.String], state fwtypes.SetValueOf[types.String]) (toEnable, toDisable []string, diags diag.Diagnostics) {
 	if plan.Equal(state) {
 		return nil, nil, nil
 	}
@@ -896,6 +915,16 @@ func diffCrossRegionRestoreSources(
 		}
 	}
 	return toEnable, toDisable, diags
+}
+
+func enabledCrossRegionRestoreElements(sources []odbtypes.CrossRegionS3RestoreSourcesAccess) []attr.Value {
+	elements := make([]attr.Value, 0, len(sources))
+	for _, src := range sources {
+		if src.Status == odbtypes.ManagedResourceStatusEnabled && src.Region != nil {
+			elements = append(elements, types.StringValue(aws.ToString(src.Region)))
+		}
+	}
+	return elements
 }
 
 type odbNetworkResourceModel struct {
