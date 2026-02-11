@@ -1,3 +1,5 @@
 ```release-note:enhancement
-resource/aws_odb_network: Enhancements to support cross-region restore parameter in CreateOdbNetwork and UpdateOdbNetwork.
+resource/aws_odb_network: Enhancements to support cross-region restore.
+
+data-source/aws_odb_network: Enhancements to support cross-region restore.
 ```
