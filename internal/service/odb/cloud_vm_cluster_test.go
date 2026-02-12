@@ -152,7 +152,7 @@ func TestAccODBCloudVmCluster_taggingTest(t *testing.T) {
 			{
 				Config: vmcWithTag,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, acctest.CtTagsPercent, "2"),
+					resource.TestCheckResourceAttr(resourceName, acctest.CtTagsPercent, "3"),
 					resource.TestCheckResourceAttr(resourceName, "tags.env", "dev"),
 					resource.TestCheckResourceAttr(resourceName, "tags.foo", "bar"),
 					vmClusterTestEntity.testAccCheckCloudVmClusterExists(ctx, resourceName, &cloudvmcluster2),
@@ -453,22 +453,22 @@ func (cloudVmClusterResourceTest) testAccCloudVmClusterConfigBasic(vmClusterDisp
 	odbNet := vmClusterTestEntity.oracleDBNetwork(odbNetDisplayName)
 	vmcNoTag := fmt.Sprintf(`
 
-%s
 
-%s
+
+
 
 data "aws_odb_db_servers" "test" {
-  cloud_exadata_infrastructure_id = aws_odb_cloud_exadata_infrastructure.test.id
+  cloud_exadata_infrastructure_id = "exa_yd3ilseunj"
 }
 
 resource "aws_odb_cloud_vm_cluster" "test" {
   display_name                    = %[3]q
-  cloud_exadata_infrastructure_id = aws_odb_cloud_exadata_infrastructure.test.id
+  cloud_exadata_infrastructure_id = "exa_yd3ilseunj"
   cpu_core_count                  = 16
   gi_version                      = "26.0.0.0"
   hostname_prefix                 = "apollo-12"
   ssh_public_keys                 = ["%[4]s"]
-  odb_network_id                  = aws_odb_network.test.id
+  odb_network_id                  = "odbnet_6aa50p4x4s"
   is_local_backup_enabled         = true
   is_sparse_diskgroup_enabled     = true
   license_model                   = "LICENSE_INCLUDED"
@@ -487,22 +487,22 @@ resource "aws_odb_cloud_vm_cluster" "test" {
 
 	vmcWithTag := fmt.Sprintf(`
 
-%s
 
-%s
+
+
 
 data "aws_odb_db_servers" "test" {
-  cloud_exadata_infrastructure_id = aws_odb_cloud_exadata_infrastructure.test.id
+  cloud_exadata_infrastructure_id = "exa_yd3ilseunj"
 }
 
 resource "aws_odb_cloud_vm_cluster" "test" {
   display_name                    = %[3]q
-  cloud_exadata_infrastructure_id = aws_odb_cloud_exadata_infrastructure.test.id
+  cloud_exadata_infrastructure_id = "exa_yd3ilseunj"
   cpu_core_count                  = 16
   gi_version                      = "26.0.0.0"
   hostname_prefix                 = "apollo-12"
   ssh_public_keys                 = ["%[4]s"]
-  odb_network_id                  = aws_odb_network.test.id
+  odb_network_id                  = "odbnet_6aa50p4x4s"
   is_local_backup_enabled         = true
   is_sparse_diskgroup_enabled     = true
   license_model                   = "LICENSE_INCLUDED"
