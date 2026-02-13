@@ -397,7 +397,7 @@ func (r *resourceNetwork) Create(ctx context.Context, req resource.CreateRequest
 	plan.KmsPolicyDocument = types.StringPointerValue(createdOdbNetwork.ManagedServices.KmsAccess.KmsPolicyDocument)
 
 	if createdOdbNetwork.ManagedServices.CrossRegionS3RestoreSourcesAccess != nil && len(input.CrossRegionS3RestoreSourcesToEnable) > 0 {
-		crossRegionErr := waitForCrossRegionRestoreSourcesStatus(ctx, conn, *out.OdbNetworkId, &input.CrossRegionS3RestoreSourcesToEnable, nil, managedServiceTimeout)
+		crossRegionErr := waitForCrossRegionRestoreSourcesStatus(ctx, conn, *out.OdbNetworkId, &input.CrossRegionS3RestoreSourcesToEnable, managedServiceTimeout)
 		if crossRegionErr != nil {
 			resp.Diagnostics.AddError(
 				create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork, plan.OdbNetworkId.String(), crossRegionErr),
@@ -535,7 +535,6 @@ func (r *resourceNetwork) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	var enableCrossRegion *[]string = nil
-	var disableCrossRegion *[]string = nil
 	if diff.HasChanges() {
 		var input odb.UpdateOdbNetworkInput
 		resp.Diagnostics.Append(flex.Expand(ctx, plan, &input)...)
@@ -554,7 +553,6 @@ func (r *resourceNetwork) Update(ctx context.Context, req resource.UpdateRequest
 		}
 		if len(toDisable) > 0 {
 			input.CrossRegionS3RestoreSourcesToDisable = toDisable
-			disableCrossRegion = &toDisable
 		}
 
 		out, err := conn.UpdateOdbNetwork(ctx, &input)
@@ -662,7 +660,7 @@ func (r *resourceNetwork) Update(ctx context.Context, req resource.UpdateRequest
 	}
 	plan.ZeroEtlAccess = fwtypes.StringEnumValue(readZeroEtlAccessStatus)
 
-	crossRegionErr := waitForCrossRegionRestoreSourcesStatus(ctx, conn, plan.OdbNetworkId.ValueString(), enableCrossRegion, disableCrossRegion, managedServiceTimeout)
+	crossRegionErr := waitForCrossRegionRestoreSourcesStatus(ctx, conn, plan.OdbNetworkId.ValueString(), enableCrossRegion, managedServiceTimeout)
 	if crossRegionErr != nil {
 		resp.Diagnostics.AddError(
 			create.ProblemStandardMessage(names.ODB, create.ErrActionWaitingForUpdate, ResNameNetwork, plan.OdbNetworkId.String(), crossRegionErr),
@@ -799,18 +797,10 @@ func waitForSingleCrossRegionRestoreSourcesStatus(ctx context.Context, conn *odb
 	return err
 }
 
-func waitForCrossRegionRestoreSourcesStatus(ctx context.Context, conn *odb.Client, id string, toEnable *[]string, toDisable *[]string, timeout time.Duration) error {
+func waitForCrossRegionRestoreSourcesStatus(ctx context.Context, conn *odb.Client, id string, toEnable *[]string, timeout time.Duration) error {
 	if toEnable != nil {
 		for _, src := range *toEnable {
 			err := waitForSingleCrossRegionRestoreSourcesStatus(ctx, conn, id, src, odbtypes.ManagedResourceStatusEnabled, timeout)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	if toDisable != nil {
-		for _, src := range *toDisable {
-			err := waitForSingleCrossRegionRestoreSourcesStatus(ctx, conn, id, src, odbtypes.ManagedResourceStatusDisabled, timeout)
 			if err != nil {
 				return err
 			}
