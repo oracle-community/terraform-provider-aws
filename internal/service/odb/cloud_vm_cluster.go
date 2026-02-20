@@ -511,6 +511,18 @@ func (r *resourceCloudVmCluster) ValidateConfig(ctx context.Context, req resourc
 		)
 		return
 	}
+	vmcTagAsMap := data.Tags.Elements()
+	v, ok := vmcTagAsMap[GiVersionSystemTag]
+	if ok {
+		if v.String() != data.GiVersion.String() {
+			err := errors.New(GiVersionSystemTag + " tag value must be equals to GiVersion value")
+			resp.Diagnostics.AddError(
+				create.ProblemStandardMessage(names.ODB, create.ErrActionCreating, ResNameCloudVmCluster, data.DisplayName.String(), err),
+				err.Error(),
+			)
+			return
+		}
+	}
 }
 
 func (r *resourceCloudVmCluster) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -533,8 +545,6 @@ func (r *resourceCloudVmCluster) Create(ctx context.Context, req resource.Create
 		//Underlying API treats Hostname as hostname prefix.
 		Hostname: plan.HostnamePrefix.ValueStringPointer(),
 	}
-	//set the gi version in the input tag
-	input.Tags[GiVersionSystemTag] = *input.GiVersion
 	input.OdbNetworkId = odbNetwork.ValueStringPointer()
 	input.CloudExadataInfrastructureId = cloudExadataInfra.ValueStringPointer()
 	resp.Diagnostics.Append(flex.Expand(ctx, plan, &input)...)
@@ -572,7 +582,7 @@ func (r *resourceCloudVmCluster) Create(ctx context.Context, req resource.Create
 	//scan listener port not returned by API directly
 	plan.ScanListenerPortTcp = flex.Int32ToFramework(ctx, createdVmCluster.ListenerPort)
 	plan.GiVersionComputed = flex.StringToFramework(ctx, createdVmCluster.GiVersion)
-	inputGiVersionReadFromTag, err := getInputGiVersionFromTag(ctx, conn, createdVmCluster.CloudVmClusterArn)
+	giVersionMajor, err := getMajorGiVersion(ctx, conn, createdVmCluster.CloudVmClusterArn, createdVmCluster.GiVersion)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			create.ProblemStandardMessage(names.ODB, create.ErrActionWaitingForCreation, ResNameCloudVmCluster, plan.DisplayName.ValueString(), err),
@@ -580,7 +590,7 @@ func (r *resourceCloudVmCluster) Create(ctx context.Context, req resource.Create
 		)
 		return
 	}
-	plan.GiVersion = flex.StringToFramework(ctx, inputGiVersionReadFromTag)
+	plan.GiVersion = flex.StringToFramework(ctx, giVersionMajor)
 	plan.OdbNetworkId = flex.StringToFramework(ctx, createdVmCluster.OdbNetworkId)
 	plan.OdbNetworkArn = flex.StringToFramework(ctx, createdVmCluster.OdbNetworkArn)
 	plan.CloudExadataInfrastructureId = flex.StringToFramework(ctx, createdVmCluster.CloudExadataInfrastructureId)
@@ -618,7 +628,7 @@ func (r *resourceCloudVmCluster) Read(ctx context.Context, req resource.ReadRequ
 	//scan listener port not returned by API directly
 	state.ScanListenerPortTcp = flex.Int32ToFramework(ctx, out.ListenerPort)
 	state.GiVersionComputed = flex.StringToFramework(ctx, out.GiVersion)
-	inputGiVersionReadFromTag, err := getInputGiVersionFromTag(ctx, conn, out.CloudVmClusterArn)
+	giVersionMajor, err := getMajorGiVersion(ctx, conn, out.CloudVmClusterArn, out.GiVersion)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			create.ProblemStandardMessage(names.ODB, create.ErrActionWaitingForCreation, ResNameCloudVmCluster, state.CloudVmClusterId.ValueString(), err),
@@ -626,7 +636,7 @@ func (r *resourceCloudVmCluster) Read(ctx context.Context, req resource.ReadRequ
 		)
 		return
 	}
-	state.GiVersion = flex.StringToFramework(ctx, inputGiVersionReadFromTag)
+	state.GiVersion = flex.StringToFramework(ctx, giVersionMajor)
 	state.OdbNetworkId = flex.StringToFramework(ctx, out.OdbNetworkId)
 	state.OdbNetworkArn = flex.StringToFramework(ctx, out.OdbNetworkArn)
 	state.CloudExadataInfrastructureId = flex.StringToFramework(ctx, out.CloudExadataInfrastructureId)
@@ -751,7 +761,10 @@ func findCloudVmClusterForResourceByID(ctx context.Context, conn *odb.Client, id
 	}
 	return out.CloudVmCluster, nil
 }
-func getInputGiVersionFromTag(ctx context.Context, conn *odb.Client, arn *string) (*string, error) {
+
+// Here we will go through tag to find out whether we can find the input gi_version or not. If not found we will get the version from
+// computed gi version for backward compatability purpose.
+func getMajorGiVersion(ctx context.Context, conn *odb.Client, arn *string, giVersionComputed *string) (*string, error) {
 	tagsRead, err := listTags(ctx, conn, *arn)
 	if err != nil {
 		return nil, err
@@ -759,11 +772,18 @@ func getInputGiVersionFromTag(ctx context.Context, conn *odb.Client, arn *string
 	var inputGiVersion *string
 	if tagsRead.KeyExists(GiVersionSystemTag) {
 		inputGiVersion = tagsRead.KeyValue(GiVersionSystemTag)
+		return inputGiVersion, nil
 	} else {
-		err = errors.New(GiVersionSystemTag + " tag is not set")
-		return nil, err
+		//This regx based approach is for backward compatibility
+		giVersionMajor := strings.Split(*giVersionComputed, ".")[0]
+		giVersionMajor = giVersionMajor + ".0.0.0"
+		regxGiVersionMajor := regexache.MustCompile(MajorGiVersionPattern)
+		if !regxGiVersionMajor.MatchString(giVersionMajor) {
+			err := errors.New("gi_version major retrieved from gi_version_computed does not match the pattern 19.0.0.0")
+			return nil, err
+		}
+		return &giVersionMajor, nil
 	}
-	return inputGiVersion, nil
 }
 
 type cloudVmClusterResourceModel struct {
