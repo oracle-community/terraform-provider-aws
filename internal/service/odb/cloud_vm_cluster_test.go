@@ -823,6 +823,7 @@ func (cloudVmClusterResourceTest) cloudVmClusterConfigWithGiVersionTag(vmCluster
 	odbNet := vmClusterTestEntity.oracleDBNetwork(odbNetDisplayName)
 	vmcWithGiVersionTag := fmt.Sprintf(`
 
+
 %s
 
 %s
@@ -853,9 +854,9 @@ resource "aws_odb_cloud_vm_cluster" "test" {
     is_health_monitoring_enabled  = false
     is_incident_logs_enabled      = false
   }
- tags = {
+  tags = {
     "odb:input_gi_version" = "23.0.0.0"
-    "foo" = "bar"
+    "foo"                  = "bar"
   }
 
 }

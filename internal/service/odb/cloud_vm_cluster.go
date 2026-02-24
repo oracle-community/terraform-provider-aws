@@ -763,7 +763,7 @@ func findCloudVmClusterForResourceByID(ctx context.Context, conn *odb.Client, id
 }
 
 // Here we will go through tag to find out whether we can find the input gi_version or not. If not found we will get the version from
-// computed gi version for backward compatability purpose.
+// computed gi version to ensure backward compatibility.
 func getMajorGiVersion(ctx context.Context, conn *odb.Client, arn *string, giVersionComputed *string) (*string, error) {
 	tagsRead, err := listTags(ctx, conn, *arn)
 	if err != nil {
