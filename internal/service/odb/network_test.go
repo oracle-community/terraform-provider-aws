@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -93,6 +94,53 @@ func TestAccODBNetworkResource_withAllParams(t *testing.T) {
 				Config: oracleDBNetworkResourceTestEntity.networkWithAllParams(rName, "julia.com"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					oracleDBNetworkResourceTestEntity.testAccCheckNetworkExists(ctx, resourceName, &network1),
+				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importStateVerifyIgnore,
+			},
+		},
+	})
+}
+
+func TestAccODBNetworkResource_ec2PlacementGroupIDs(t *testing.T) {
+	ctx := acctest.Context(t)
+	if testing.Short() {
+		t.Skip("skipping long-running test in short mode")
+	}
+	importStateVerifyIgnore := []string{
+		"delete_associated_resources",
+	}
+	var network odbtypes.OdbNetwork
+	rName := sdkacctest.RandomWithPrefix(oracleDBNetworkResourceTestEntity.displayNamePrefix)
+	resourceName := "aws_odb_network.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acctest.PreCheck(ctx, t)
+			oracleDBNetworkResourceTestEntity.testAccPreCheck(ctx, t)
+		},
+		ErrorCheck:               acctest.ErrorCheck(t, names.ODBServiceID),
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
+		CheckDestroy:             oracleDBNetworkResourceTestEntity.testAccCheckNetworkDestroy(ctx),
+		Steps: []resource.TestStep{
+			{
+				Config: oracleDBNetworkResourceTestEntity.basicNetwork(rName),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					oracleDBNetworkResourceTestEntity.testAccCheckNetworkExists(ctx, resourceName, &network),
+					resource.TestCheckResourceAttrWith(resourceName, "ec2_placement_group_ids.#", func(value string) error {
+						count, err := strconv.Atoi(value)
+						if err != nil {
+							return fmt.Errorf("parsing ec2_placement_group_ids count: %w", err)
+						}
+						if count <= 0 {
+							return fmt.Errorf("expected ec2_placement_group_ids to be non-empty, got %d", count)
+						}
+						return nil
+					}),
 				),
 			},
 			{

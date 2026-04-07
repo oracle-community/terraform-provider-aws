@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -53,6 +54,44 @@ func TestAccODBNetworkDataSource_basic(t *testing.T) {
 				Config: oracleDBNetworkDataSourceTestEntity.basicNetworkDataSource(rName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrPair(networkResource, names.AttrID, networkDataSource, names.AttrID),
+				),
+			},
+		},
+	})
+}
+
+func TestAccODBNetworkDataSource_ec2PlacementGroupIDs(t *testing.T) {
+	ctx := acctest.Context(t)
+	if testing.Short() {
+		t.Skip("skipping long-running test in short mode")
+	}
+	networkResource := "aws_odb_network.test_resource"
+	networkDataSource := "data.aws_odb_network.test"
+	rName := sdkacctest.RandomWithPrefix("tf-ora-net")
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acctest.PreCheck(ctx, t)
+			oracleDBNetworkDataSourceTestEntity.testAccNetworkDataSourcePreCheck(ctx, t)
+		},
+		ErrorCheck:               acctest.ErrorCheck(t, names.ODBServiceID),
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
+		CheckDestroy:             oracleDBNetworkDataSourceTestEntity.testAccCheckNetworkDataSourceDestroyed(ctx),
+		Steps: []resource.TestStep{
+			{
+				Config: oracleDBNetworkDataSourceTestEntity.basicNetworkDataSource(rName),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrPair(networkResource, names.AttrID, networkDataSource, names.AttrID),
+					resource.TestCheckResourceAttrWith(networkDataSource, "ec2_placement_group_ids.#", func(value string) error {
+						count, err := strconv.Atoi(value)
+						if err != nil {
+							return fmt.Errorf("parsing ec2_placement_group_ids count: %w", err)
+						}
+						if count <= 0 {
+							return fmt.Errorf("expected ec2_placement_group_ids to be non-empty, got %d", count)
+						}
+						return nil
+					}),
 				),
 			},
 		},
