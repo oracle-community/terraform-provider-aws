@@ -182,7 +182,7 @@ type odbNetworkDataSourceModel struct {
 	OdbNetworkId            types.String                                                                 `tfsdk:"id"`
 	PeeredCidrs             fwtypes.SetValueOf[types.String]                                             `tfsdk:"peered_cidrs"`
 	PercentProgress         types.Float64                                                                `tfsdk:"percent_progress"`
-	EC2PlacementGroupIds    fwtypes.ListOfString                                                         `tfsdk:"ec2_placement_group_ids"`
+	Ec2PlacementGroupIds    fwtypes.ListOfString                                                         `tfsdk:"ec2_placement_group_ids"`
 	Status                  fwtypes.StringEnum[odbtypes.ResourceStatus]                                  `tfsdk:"status"`
 	StatusReason            types.String                                                                 `tfsdk:"status_reason"`
 	CreatedAt               timetypes.RFC3339                                                            `tfsdk:"created_at"`

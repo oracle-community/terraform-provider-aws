@@ -29,7 +29,7 @@ type oracleDBNetworkResourceTest struct {
 }
 
 var oracleDBNetworkResourceTestEntity = oracleDBNetworkResourceTest{
-	displayNamePrefix: "Ofake-tf-ora-net",
+	displayNamePrefix: "tf-ora-net",
 }
 
 // Basic test with bare minimum input
