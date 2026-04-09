@@ -128,7 +128,7 @@ func TestAccODBNetworkResource_ec2PlacementGroupIDs(t *testing.T) {
 		CheckDestroy:             oracleDBNetworkResourceTestEntity.testAccCheckNetworkDestroy(ctx),
 		Steps: []resource.TestStep{
 			{
-				Config: oracleDBNetworkResourceTestEntity.basicNetwork(rName),
+				Config: oracleDBNetworkResourceTestEntity.basicNetworkFroEC2PlacementGroup(rName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					oracleDBNetworkResourceTestEntity.testAccCheckNetworkExists(ctx, resourceName, &network),
 					resource.TestCheckResourceAttrWith(resourceName, "ec2_placement_group_ids.#", func(value string) error {
@@ -473,6 +473,25 @@ func (oracleDBNetworkResourceTest) basicNetwork(rName string) string {
 resource "aws_odb_network" "test" {
   display_name                = %[1]q
   availability_zone_id        = "use1-az6"
+  client_subnet_cidr          = "10.2.0.0/24"
+  backup_subnet_cidr          = "10.2.1.0/24"
+  s3_access                   = "DISABLED"
+  zero_etl_access             = "DISABLED"
+  sts_access                  = "DISABLED"
+  kms_access                  = "DISABLED"
+  delete_associated_resources = true
+}
+
+`, rName)
+	return networkRes
+}
+
+func (oracleDBNetworkResourceTest) basicNetworkFroEC2PlacementGroup(rName string) string {
+	networkRes := fmt.Sprintf(`
+
+resource "aws_odb_network" "test" {
+  display_name                = %[1]q
+  availability_zone_id        = "aps2-az3"
   client_subnet_cidr          = "10.2.0.0/24"
   backup_subnet_cidr          = "10.2.1.0/24"
   s3_access                   = "DISABLED"

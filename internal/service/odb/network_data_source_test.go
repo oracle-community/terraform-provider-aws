@@ -79,7 +79,7 @@ func TestAccODBNetworkDataSource_ec2PlacementGroupIDs(t *testing.T) {
 		CheckDestroy:             oracleDBNetworkDataSourceTestEntity.testAccCheckNetworkDataSourceDestroyed(ctx),
 		Steps: []resource.TestStep{
 			{
-				Config: oracleDBNetworkDataSourceTestEntity.basicNetworkDataSource(rName),
+				Config: oracleDBNetworkDataSourceTestEntity.basicNetworkDataSourceForEC2PlacementGroup(rName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrPair(networkResource, names.AttrID, networkDataSource, names.AttrID),
 					resource.TestCheckResourceAttrWith(networkDataSource, "ec2_placement_group_ids.#", func(value string) error {
@@ -171,9 +171,40 @@ data "aws_odb_network" "test" {
 }
 
 
+	`, rName)
+	return networkRes
+}
+
+func (oracleDBNetworkDataSourceTest) basicNetworkDataSourceForEC2PlacementGroup(rName string) string {
+	networkRes := fmt.Sprintf(`
+
+
+
+
+resource "aws_odb_network" "test_resource" {
+  display_name         = %[1]q
+  availability_zone_id = "aps2-az3"
+  client_subnet_cidr   = "10.2.0.0/24"
+  backup_subnet_cidr   = "10.2.1.0/24"
+  s3_access            = "DISABLED"
+  zero_etl_access      = "DISABLED"
+  sts_access           = "DISABLED"
+  kms_access           = "DISABLED"
+  tags = {
+    "env" = "dev"
+  }
+}
+
+
+data "aws_odb_network" "test" {
+  id = aws_odb_network.test_resource.id
+}
+
+
 `, rName)
 	return networkRes
 }
+
 func (oracleDBNetworkDataSourceTest) testAccNetworkDataSourcePreCheck(ctx context.Context, t *testing.T) {
 	conn := acctest.Provider.Meta().(*conns.AWSClient).ODBClient(ctx)
 	input := odb.ListOdbNetworksInput{}
