@@ -46,6 +46,7 @@ var routeValidTargets = []string{
 	"gateway_id",
 	"local_gateway_id",
 	"nat_gateway_id",
+	"odb_network_arn",
 	names.AttrNetworkInterfaceID,
 	names.AttrTransitGatewayID,
 	names.AttrVPCEndpointID,
@@ -166,6 +167,11 @@ func resourceRoute() *schema.Resource {
 				Optional:     true,
 				ExactlyOneOf: routeValidTargets,
 			},
+			"odb_network_arn": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ExactlyOneOf: routeValidTargets,
+			},
 
 			//
 			// Computed attributes.
@@ -238,6 +244,8 @@ func resourceRouteCreate(ctx context.Context, d *schema.ResourceData, meta any) 
 		input.LocalGatewayId = target
 	case "nat_gateway_id":
 		input.NatGatewayId = target
+	case "odb_network_arn":
+		input.OdbNetworkArn = target
 	case "network_interface_id":
 		input.NetworkInterfaceId = target
 	case "transit_gateway_id":
@@ -344,6 +352,7 @@ func resourceRouteRead(ctx context.Context, d *schema.ResourceData, meta any) di
 	d.Set(names.AttrInstanceID, route.InstanceId)
 	d.Set("instance_owner_id", route.InstanceOwnerId)
 	d.Set(names.AttrNetworkInterfaceID, route.NetworkInterfaceId)
+	d.Set("odb_network_arn", route.OdbNetworkArn)
 	d.Set("origin", route.Origin)
 	d.Set(names.AttrState, route.State)
 	d.Set(names.AttrTransitGatewayID, route.TransitGatewayId)
@@ -407,6 +416,8 @@ func resourceRouteUpdate(ctx context.Context, d *schema.ResourceData, meta any) 
 		input.LocalGatewayId = target
 	case "nat_gateway_id":
 		input.NatGatewayId = target
+	case "odb_network_arn":
+		input.OdbNetworkArn = target
 	case "network_interface_id":
 		input.NetworkInterfaceId = target
 	case "transit_gateway_id":
