@@ -364,86 +364,103 @@ func (r *resourceNetwork) Create(ctx context.Context, req resource.CreateRequest
 		)
 		return
 	}
-	if createdOdbNetwork != nil && createdOdbNetwork.ManagedServices != nil {
-		//since zero_etl_access, s3_access and s3_policy_document are not returned directly by underlying API we need to set it.
-		if createdOdbNetwork.ManagedServices.ZeroEtlAccess != nil {
-			readZeroEtlAccessStatus, err := mapManagedServiceStatusToAccessStatus(createdOdbNetwork.ManagedServices.ZeroEtlAccess.Status)
-			if err != nil {
-				resp.Diagnostics.AddError(
-					create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork, plan.DisplayName.String(), err),
-					err.Error(),
-				)
-				return
-			}
-			plan.ZeroEtlAccess = fwtypes.StringEnumValue(readZeroEtlAccessStatus)
-		}
+	if createdOdbNetwork == nil || createdOdbNetwork.ManagedServices == nil {
+		resp.Diagnostics.AddError(
+			create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork, plan.DisplayName.String(), nil),
+			"API returned empty managed services response",
+		)
+		return
+	}
 
-		if createdOdbNetwork.ManagedServices.S3Access != nil {
-			readS3AccessStatus, err := mapManagedServiceStatusToAccessStatus(createdOdbNetwork.ManagedServices.S3Access.Status)
-			if err != nil {
-				resp.Diagnostics.AddError(
-					create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork, plan.DisplayName.String(), err),
-					err.Error(),
-				)
-				return
-			}
-			plan.S3Access = fwtypes.StringEnumValue(readS3AccessStatus)
-			plan.S3PolicyDocument = types.StringPointerValue(createdOdbNetwork.ManagedServices.S3Access.S3PolicyDocument)
+	//since zero_etl_access, s3_access and s3_policy_document are not returned directly by underlying API we need to set it.
+	if createdOdbNetwork.ManagedServices.ZeroEtlAccess != nil {
+		readZeroEtlAccessStatus, err := mapManagedServiceStatusToAccessStatus(createdOdbNetwork.ManagedServices.ZeroEtlAccess.Status)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork, plan.DisplayName.String(), err),
+				err.Error(),
+			)
+			return
 		}
+		plan.ZeroEtlAccess = fwtypes.StringEnumValue(readZeroEtlAccessStatus)
+	} else {
+		plan.ZeroEtlAccess = fwtypes.StringEnumNull[odbtypes.Access]()
+	}
 
-		if createdOdbNetwork.ManagedServices.StsAccess != nil {
-			readSTSAccessStatus, err := mapManagedServiceStatusToAccessStatus(createdOdbNetwork.ManagedServices.StsAccess.Status)
-			if err != nil {
-				resp.Diagnostics.AddError(
-					create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork, plan.DisplayName.String(), err),
-					err.Error(),
-				)
-				return
-			}
-			plan.StsAccess = fwtypes.StringEnumValue(readSTSAccessStatus)
-			plan.StsPolicyDocument = types.StringPointerValue(createdOdbNetwork.ManagedServices.StsAccess.StsPolicyDocument)
+	if createdOdbNetwork.ManagedServices.S3Access != nil {
+		readS3AccessStatus, err := mapManagedServiceStatusToAccessStatus(createdOdbNetwork.ManagedServices.S3Access.Status)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork, plan.DisplayName.String(), err),
+				err.Error(),
+			)
+			return
 		}
+		plan.S3Access = fwtypes.StringEnumValue(readS3AccessStatus)
+		plan.S3PolicyDocument = types.StringPointerValue(createdOdbNetwork.ManagedServices.S3Access.S3PolicyDocument)
+	} else {
+		plan.S3Access = fwtypes.StringEnumNull[odbtypes.Access]()
+		plan.S3PolicyDocument = types.StringNull()
+	}
 
-		if createdOdbNetwork.ManagedServices.KmsAccess != nil {
-			readKMSAccessStatus, err := mapManagedServiceStatusToAccessStatus(createdOdbNetwork.ManagedServices.KmsAccess.Status)
-			if err != nil {
-				resp.Diagnostics.AddError(
-					create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork, plan.DisplayName.String(), err),
-					err.Error(),
-				)
-				return
-			}
-			plan.KmsAccess = fwtypes.StringEnumValue(readKMSAccessStatus)
-			plan.KmsPolicyDocument = types.StringPointerValue(createdOdbNetwork.ManagedServices.KmsAccess.KmsPolicyDocument)
+	if createdOdbNetwork.ManagedServices.StsAccess != nil {
+		readSTSAccessStatus, err := mapManagedServiceStatusToAccessStatus(createdOdbNetwork.ManagedServices.StsAccess.Status)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork, plan.DisplayName.String(), err),
+				err.Error(),
+			)
+			return
 		}
+		plan.StsAccess = fwtypes.StringEnumValue(readSTSAccessStatus)
+		plan.StsPolicyDocument = types.StringPointerValue(createdOdbNetwork.ManagedServices.StsAccess.StsPolicyDocument)
+	} else {
+		plan.StsAccess = fwtypes.StringEnumNull[odbtypes.Access]()
+		plan.StsPolicyDocument = types.StringNull()
+	}
 
-		if createdOdbNetwork.ManagedServices.CrossRegionS3RestoreSourcesAccess != nil && len(input.CrossRegionS3RestoreSourcesToEnable) > 0 {
-			crossRegionErr := waitForCrossRegionRestoreSourcesStatus(ctx, conn, *out.OdbNetworkId, &input.CrossRegionS3RestoreSourcesToEnable, managedServiceTimeout)
-			if crossRegionErr != nil {
-				resp.Diagnostics.AddError(
-					create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork, plan.OdbNetworkId.String(), crossRegionErr),
-					crossRegionErr.Error(),
-				)
-				return
-			}
+	if createdOdbNetwork.ManagedServices.KmsAccess != nil {
+		readKMSAccessStatus, err := mapManagedServiceStatusToAccessStatus(createdOdbNetwork.ManagedServices.KmsAccess.Status)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork, plan.DisplayName.String(), err),
+				err.Error(),
+			)
+			return
 		}
+		plan.KmsAccess = fwtypes.StringEnumValue(readKMSAccessStatus)
+		plan.KmsPolicyDocument = types.StringPointerValue(createdOdbNetwork.ManagedServices.KmsAccess.KmsPolicyDocument)
+	} else {
+		plan.KmsAccess = fwtypes.StringEnumNull[odbtypes.Access]()
+		plan.KmsPolicyDocument = types.StringNull()
+	}
 
-		if createdOdbNetwork.ManagedServices.CrossRegionS3RestoreSourcesAccess != nil && len(createdOdbNetwork.ManagedServices.CrossRegionS3RestoreSourcesAccess) > 0 {
-			elements := enabledCrossRegionRestoreElements(createdOdbNetwork.ManagedServices.CrossRegionS3RestoreSourcesAccess)
-			setVal, diagnostics := fwtypes.NewSetValueOf[types.String](ctx, elements)
-			resp.Diagnostics.Append(diagnostics...)
-			if resp.Diagnostics.HasError() {
-				return
-			}
-			plan.CrossRegionS3RestoreSourcesAccess = setVal
-		} else {
-			setVal, diagnostics := fwtypes.NewSetValueOf[types.String](ctx, nil)
-			resp.Diagnostics.Append(diagnostics...)
-			if resp.Diagnostics.HasError() {
-				return
-			}
-			plan.CrossRegionS3RestoreSourcesAccess = setVal
+	if createdOdbNetwork.ManagedServices.CrossRegionS3RestoreSourcesAccess != nil && len(input.CrossRegionS3RestoreSourcesToEnable) > 0 {
+		crossRegionErr := waitForCrossRegionRestoreSourcesStatus(ctx, conn, *out.OdbNetworkId, &input.CrossRegionS3RestoreSourcesToEnable, managedServiceTimeout)
+		if crossRegionErr != nil {
+			resp.Diagnostics.AddError(
+				create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork, plan.OdbNetworkId.String(), crossRegionErr),
+				crossRegionErr.Error(),
+			)
+			return
 		}
+	}
+
+	if createdOdbNetwork.ManagedServices.CrossRegionS3RestoreSourcesAccess != nil && len(createdOdbNetwork.ManagedServices.CrossRegionS3RestoreSourcesAccess) > 0 {
+		elements := enabledCrossRegionRestoreElements(createdOdbNetwork.ManagedServices.CrossRegionS3RestoreSourcesAccess)
+		setVal, diagnostics := fwtypes.NewSetValueOf[types.String](ctx, elements)
+		resp.Diagnostics.Append(diagnostics...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		plan.CrossRegionS3RestoreSourcesAccess = setVal
+	} else {
+		setVal, diagnostics := fwtypes.NewSetValueOf[types.String](ctx, nil)
+		resp.Diagnostics.Append(diagnostics...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		plan.CrossRegionS3RestoreSourcesAccess = setVal
 	}
 
 	resp.Diagnostics.Append(flex.Flatten(ctx, createdOdbNetwork, &plan)...)
@@ -474,13 +491,16 @@ func (r *resourceNetwork) Read(ctx context.Context, req resource.ReadRequest, re
 		)
 		return
 	}
-	if out.ManagedServices == nil {
+
+	if out == nil || out.ManagedServices == nil {
 		resp.Diagnostics.AddError(
 			create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork, state.OdbNetworkId.String(), errors.New("odbNetwork managed service not found")),
 			"Odb Network managed service cannot be nil",
 		)
 		return
-	} else {
+	}
+
+	if out.ManagedServices.S3Access != nil {
 		readS3AccessStatus, err := mapManagedServiceStatusToAccessStatus(out.ManagedServices.S3Access.Status)
 		if err != nil {
 			resp.Diagnostics.AddError(
@@ -491,7 +511,12 @@ func (r *resourceNetwork) Read(ctx context.Context, req resource.ReadRequest, re
 		}
 		state.S3Access = fwtypes.StringEnumValue(readS3AccessStatus)
 		state.S3PolicyDocument = types.StringPointerValue(out.ManagedServices.S3Access.S3PolicyDocument)
+	} else {
+		state.S3Access = fwtypes.StringEnumNull[odbtypes.Access]()
+		state.S3PolicyDocument = types.StringNull()
+	}
 
+	if out.ManagedServices.ZeroEtlAccess != nil {
 		readZeroEtlAccessStatus, err := mapManagedServiceStatusToAccessStatus(out.ManagedServices.ZeroEtlAccess.Status)
 		if err != nil {
 			resp.Diagnostics.AddError(
@@ -501,7 +526,11 @@ func (r *resourceNetwork) Read(ctx context.Context, req resource.ReadRequest, re
 			return
 		}
 		state.ZeroEtlAccess = fwtypes.StringEnumValue(readZeroEtlAccessStatus)
+	} else {
+		state.ZeroEtlAccess = fwtypes.StringEnumNull[odbtypes.Access]()
+	}
 
+	if out.ManagedServices.StsAccess != nil {
 		readStsAccessStatus, err := mapManagedServiceStatusToAccessStatus(out.ManagedServices.StsAccess.Status)
 		if err != nil {
 			resp.Diagnostics.AddError(
@@ -512,7 +541,12 @@ func (r *resourceNetwork) Read(ctx context.Context, req resource.ReadRequest, re
 		}
 		state.StsAccess = fwtypes.StringEnumValue(readStsAccessStatus)
 		state.StsPolicyDocument = types.StringPointerValue(out.ManagedServices.StsAccess.StsPolicyDocument)
+	} else {
+		state.StsAccess = fwtypes.StringEnumNull[odbtypes.Access]()
+		state.StsPolicyDocument = types.StringNull()
+	}
 
+	if out.ManagedServices.KmsAccess != nil {
 		readKmsAccessStatus, err := mapManagedServiceStatusToAccessStatus(out.ManagedServices.KmsAccess.Status)
 		if err != nil {
 			resp.Diagnostics.AddError(
@@ -523,17 +557,21 @@ func (r *resourceNetwork) Read(ctx context.Context, req resource.ReadRequest, re
 		}
 		state.KmsAccess = fwtypes.StringEnumValue(readKmsAccessStatus)
 		state.KmsPolicyDocument = types.StringPointerValue(out.ManagedServices.KmsAccess.KmsPolicyDocument)
-
-		if out.ManagedServices.CrossRegionS3RestoreSourcesAccess != nil {
-			elements := enabledCrossRegionRestoreElements(out.ManagedServices.CrossRegionS3RestoreSourcesAccess)
-			setVal, diagnostics := fwtypes.NewSetValueOf[types.String](ctx, elements)
-			resp.Diagnostics.Append(diagnostics...)
-			if resp.Diagnostics.HasError() {
-				return
-			}
-			state.CrossRegionS3RestoreSourcesAccess = setVal
-		}
+	} else {
+		state.KmsAccess = fwtypes.StringEnumNull[odbtypes.Access]()
+		state.KmsPolicyDocument = types.StringNull()
 	}
+
+	if out.ManagedServices.CrossRegionS3RestoreSourcesAccess != nil {
+		elements := enabledCrossRegionRestoreElements(out.ManagedServices.CrossRegionS3RestoreSourcesAccess)
+		setVal, diagnostics := fwtypes.NewSetValueOf[types.String](ctx, elements)
+		resp.Diagnostics.Append(diagnostics...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		state.CrossRegionS3RestoreSourcesAccess = setVal
+	}
+
 	resp.Diagnostics.Append(flex.Flatten(ctx, out, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -604,9 +642,11 @@ func (r *resourceNetwork) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	//zero ETL access
 	_, err = waitForManagedService(ctx, plan.ZeroEtlAccess.ValueEnum(), conn, plan.OdbNetworkId.ValueString(), managedServiceTimeout, func(managedService *odbtypes.ManagedServices) odbtypes.ManagedResourceStatus {
-		return managedService.ZeroEtlAccess.Status
+		if managedService != nil && managedService.ZeroEtlAccess != nil {
+			return managedService.ZeroEtlAccess.Status
+		}
+		return ""
 	})
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -616,9 +656,11 @@ func (r *resourceNetwork) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	//s3 access
 	updatedOdbNwk, err := waitForManagedService(ctx, plan.S3Access.ValueEnum(), conn, plan.OdbNetworkId.ValueString(), managedServiceTimeout, func(managedService *odbtypes.ManagedServices) odbtypes.ManagedResourceStatus {
-		return managedService.S3Access.Status
+		if managedService != nil && managedService.S3Access != nil {
+			return managedService.S3Access.Status
+		}
+		return ""
 	})
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -628,20 +670,11 @@ func (r *resourceNetwork) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	readS3AccessStatus, err := mapManagedServiceStatusToAccessStatus(updatedOdbNwk.ManagedServices.S3Access.Status)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork, state.OdbNetworkId.String(), err),
-			err.Error(),
-		)
-		return
-	}
-	plan.S3Access = fwtypes.StringEnumValue(readS3AccessStatus)
-	plan.S3PolicyDocument = types.StringPointerValue(updatedOdbNwk.ManagedServices.S3Access.S3PolicyDocument)
-
-	//sts access
 	_, err = waitForManagedService(ctx, plan.StsAccess.ValueEnum(), conn, plan.OdbNetworkId.ValueString(), managedServiceTimeout, func(managedService *odbtypes.ManagedServices) odbtypes.ManagedResourceStatus {
-		return managedService.StsAccess.Status
+		if managedService != nil && managedService.StsAccess != nil {
+			return managedService.StsAccess.Status
+		}
+		return ""
 	})
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -650,37 +683,76 @@ func (r *resourceNetwork) Update(ctx context.Context, req resource.UpdateRequest
 		)
 		return
 	}
-	readStsAccessStatus, err := mapManagedServiceStatusToAccessStatus(updatedOdbNwk.ManagedServices.StsAccess.Status)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork, state.OdbNetworkId.String(), err),
-			err.Error(),
-		)
-		return
-	}
-	plan.StsAccess = fwtypes.StringEnumValue(readStsAccessStatus)
-	plan.StsPolicyDocument = types.StringPointerValue(updatedOdbNwk.ManagedServices.StsAccess.StsPolicyDocument)
 
-	readKmsAccessStatus, err := mapManagedServiceStatusToAccessStatus(updatedOdbNwk.ManagedServices.KmsAccess.Status)
-	if err != nil {
+	if updatedOdbNwk == nil || updatedOdbNwk.ManagedServices == nil {
 		resp.Diagnostics.AddError(
-			create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork, state.OdbNetworkId.String(), err),
-			err.Error(),
+			create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork, plan.OdbNetworkId.String(), nil),
+			"API returned empty managed services response after update",
 		)
 		return
 	}
-	plan.KmsAccess = fwtypes.StringEnumValue(readKmsAccessStatus)
-	plan.KmsPolicyDocument = types.StringPointerValue(updatedOdbNwk.ManagedServices.KmsAccess.KmsPolicyDocument)
 
-	readZeroEtlAccessStatus, err := mapManagedServiceStatusToAccessStatus(updatedOdbNwk.ManagedServices.ZeroEtlAccess.Status)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork, state.OdbNetworkId.String(), err),
-			err.Error(),
-		)
-		return
+	if updatedOdbNwk.ManagedServices.S3Access != nil {
+		readS3AccessStatus, err := mapManagedServiceStatusToAccessStatus(updatedOdbNwk.ManagedServices.S3Access.Status)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork, state.OdbNetworkId.String(), err),
+				err.Error(),
+			)
+			return
+		}
+		plan.S3Access = fwtypes.StringEnumValue(readS3AccessStatus)
+		plan.S3PolicyDocument = types.StringPointerValue(updatedOdbNwk.ManagedServices.S3Access.S3PolicyDocument)
+	} else {
+		plan.S3Access = fwtypes.StringEnumNull[odbtypes.Access]()
+		plan.S3PolicyDocument = types.StringNull()
 	}
-	plan.ZeroEtlAccess = fwtypes.StringEnumValue(readZeroEtlAccessStatus)
+
+	if updatedOdbNwk.ManagedServices.StsAccess != nil {
+		readStsAccessStatus, err := mapManagedServiceStatusToAccessStatus(updatedOdbNwk.ManagedServices.StsAccess.Status)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork, state.OdbNetworkId.String(), err),
+				err.Error(),
+			)
+			return
+		}
+		plan.StsAccess = fwtypes.StringEnumValue(readStsAccessStatus)
+		plan.StsPolicyDocument = types.StringPointerValue(updatedOdbNwk.ManagedServices.StsAccess.StsPolicyDocument)
+	} else {
+		plan.StsAccess = fwtypes.StringEnumNull[odbtypes.Access]()
+		plan.StsPolicyDocument = types.StringNull()
+	}
+
+	if updatedOdbNwk.ManagedServices.KmsAccess != nil {
+		readKmsAccessStatus, err := mapManagedServiceStatusToAccessStatus(updatedOdbNwk.ManagedServices.KmsAccess.Status)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork, state.OdbNetworkId.String(), err),
+				err.Error(),
+			)
+			return
+		}
+		plan.KmsAccess = fwtypes.StringEnumValue(readKmsAccessStatus)
+		plan.KmsPolicyDocument = types.StringPointerValue(updatedOdbNwk.ManagedServices.KmsAccess.KmsPolicyDocument)
+	} else {
+		plan.KmsAccess = fwtypes.StringEnumNull[odbtypes.Access]()
+		plan.KmsPolicyDocument = types.StringNull()
+	}
+
+	if updatedOdbNwk.ManagedServices.ZeroEtlAccess != nil {
+		readZeroEtlAccessStatus, err := mapManagedServiceStatusToAccessStatus(updatedOdbNwk.ManagedServices.ZeroEtlAccess.Status)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				create.ProblemStandardMessage(names.ODB, create.ErrActionReading, ResNameNetwork, state.OdbNetworkId.String(), err),
+				err.Error(),
+			)
+			return
+		}
+		plan.ZeroEtlAccess = fwtypes.StringEnumValue(readZeroEtlAccessStatus)
+	} else {
+		plan.ZeroEtlAccess = fwtypes.StringEnumNull[odbtypes.Access]()
+	}
 
 	crossRegionErr := waitForCrossRegionRestoreSourcesStatus(ctx, conn, plan.OdbNetworkId.ValueString(), enableCrossRegion, managedServiceTimeout)
 	if crossRegionErr != nil {
@@ -697,7 +769,7 @@ func (r *resourceNetwork) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	//crossRegionRestore
-	if updatedOdbNwk.ManagedServices != nil && updatedOdbNwk.ManagedServices.CrossRegionS3RestoreSourcesAccess != nil {
+	if updatedOdbNwk.ManagedServices.CrossRegionS3RestoreSourcesAccess != nil && len(updatedOdbNwk.ManagedServices.CrossRegionS3RestoreSourcesAccess) > 0 {
 		elements := enabledCrossRegionRestoreElements(updatedOdbNwk.ManagedServices.CrossRegionS3RestoreSourcesAccess)
 		setVal, diagnostics := fwtypes.NewSetValueOf[types.String](ctx, elements)
 		resp.Diagnostics.Append(diagnostics...)
