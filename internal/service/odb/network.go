@@ -446,7 +446,7 @@ func (r *resourceNetwork) Create(ctx context.Context, req resource.CreateRequest
 		}
 	}
 
-	if createdOdbNetwork.ManagedServices.CrossRegionS3RestoreSourcesAccess != nil && len(createdOdbNetwork.ManagedServices.CrossRegionS3RestoreSourcesAccess) > 0 {
+	if len(createdOdbNetwork.ManagedServices.CrossRegionS3RestoreSourcesAccess) > 0 {
 		elements := enabledCrossRegionRestoreElements(createdOdbNetwork.ManagedServices.CrossRegionS3RestoreSourcesAccess)
 		setVal, diagnostics := fwtypes.NewSetValueOf[types.String](ctx, elements)
 		resp.Diagnostics.Append(diagnostics...)
@@ -642,6 +642,7 @@ func (r *resourceNetwork) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
+	//zero ETL access
 	_, err = waitForManagedService(ctx, plan.ZeroEtlAccess.ValueEnum(), conn, plan.OdbNetworkId.ValueString(), managedServiceTimeout, func(managedService *odbtypes.ManagedServices) odbtypes.ManagedResourceStatus {
 		if managedService != nil && managedService.ZeroEtlAccess != nil {
 			return managedService.ZeroEtlAccess.Status
@@ -656,6 +657,7 @@ func (r *resourceNetwork) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
+	//s3 access
 	updatedOdbNwk, err := waitForManagedService(ctx, plan.S3Access.ValueEnum(), conn, plan.OdbNetworkId.ValueString(), managedServiceTimeout, func(managedService *odbtypes.ManagedServices) odbtypes.ManagedResourceStatus {
 		if managedService != nil && managedService.S3Access != nil {
 			return managedService.S3Access.Status
@@ -769,7 +771,7 @@ func (r *resourceNetwork) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	//crossRegionRestore
-	if updatedOdbNwk.ManagedServices.CrossRegionS3RestoreSourcesAccess != nil && len(updatedOdbNwk.ManagedServices.CrossRegionS3RestoreSourcesAccess) > 0 {
+	if len(updatedOdbNwk.ManagedServices.CrossRegionS3RestoreSourcesAccess) > 0 {
 		elements := enabledCrossRegionRestoreElements(updatedOdbNwk.ManagedServices.CrossRegionS3RestoreSourcesAccess)
 		setVal, diagnostics := fwtypes.NewSetValueOf[types.String](ctx, elements)
 		resp.Diagnostics.Append(diagnostics...)
