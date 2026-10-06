@@ -28,12 +28,71 @@ Additionally, these tests provide rapid feedback to contributors, enabling them 
 !!! note "GitHub Actions Caching"
     The provider uses a specialized caching strategy to handle the unique challenges of a massive codebase with 500+ active PRs. If you're working on GitHub Actions workflows or experiencing slow CI builds, see [GitHub Actions Caching Strategy](github-actions-caching.md) for details.
 
+## Triggering Acceptance Tests from a Pull Request Comment
+
+!!! note "Maintainers only"
+    This feature is restricted to project maintainers. When a comment is posted, a community check runs against the maintainers list. If the commenter is not a maintainer, nothing happens and no feedback is posted. Contributors should continue to run tests [locally](#using-make-to-run-specific-tests-locally) and include the output in the pull request.
+
+Maintainers can trigger the acceptance test suite for a pull request by adding a comment that begins with `/test`. This runs the affected service package's acceptance tests on the internal TeamCity server and posts the results back to the pull request when the run completes. It is implemented by the [`pr-test-trigger.yml`](https://github.com/hashicorp/terraform-provider-aws/blob/main/.github/workflows/pr-test-trigger.yml) workflow.
+
+The comment must _start_ with `/test`. A `/test` that appears later in a comment is ignored.
+
+### Single Service Package Requirement
+
+The trigger inspects the files changed in the pull request and derives the affected service package from paths under `internal/service/<package>`. It only runs when the pull request touches a **single** service package. If the pull request changes more than one service package, the workflow declines to run and instead comments asking that the tests be run manually.
+
+### Options
+
+Options are supplied as `KEY=VALUE` tokens after `/test`, separated by whitespace. Keys are case-insensitive, order does not matter, and values cannot contain spaces.
+
+| Option | Description |
+|---|---|
+| `PATTERN=<regex>` | Restricts which tests run. The value is passed through to the acceptance test runner as a Go test-name regular expression (equivalent to `go test -run`). Only the following characters are allowed: letters, digits, and `_ . ^ $ / \| \ ( ) -`. Any other character (including spaces) causes the command to be rejected. Combine multiple tests with the `\|` alternation operator, and use `^`/`$` anchors for exact matches. |
+| `PARALLELISM=<n>` | Sets the number of concurrent acceptance tests (`ACCTEST_PARALLELISM`). The value must be digits only and cannot exceed `20`; a larger value is rejected. Lower it (for example, `PARALLELISM=1`) to serialize tests that cannot run concurrently, such as those that contend for a shared, account-wide resource. |
+
+Both options can be combined in a single comment.
+
+### Examples
+
+Run all acceptance tests for the pull request's service package:
+
+```text
+/test
+```
+
+Run only the tests matching a pattern:
+
+```text
+/test PATTERN=TestAccRDSInstance_basic
+```
+
+Run several specific tests using alternation:
+
+```text
+/test PATTERN=TestAccRDSInstance_basic$|TestAccRDSCluster_basic$
+```
+
+Serialize the run to avoid contention on a shared resource:
+
+```text
+/test PARALLELISM=1
+```
+
+Combine a pattern with reduced parallelism:
+
+```text
+/test PATTERN=TestAccRDSInstance_ PARALLELISM=5
+```
+
 ## Using `make` to Run Specific Tests Locally
 
 !!! note
     We've made a great effort to ensure that tests running on GitHub have a close-as-possible equivalent in the Makefile. If you notice a difference, please [open an issue](https://github.com/hashicorp/terraform-provider-aws/issues/new/choose) to let us know.
 
 The Makefile included with the Terraform AWS Provider allows you to run many of the CI tests locally before submitting your PR. The file is located in the provider's root directory and is called `GNUmakefile`. You should be able to use `make` with a variety of Linux-type shells that support `bash`, such as a macOS terminal.
+
+!!! tip
+    With the `t` target you can omit `PKG`/`K`: set `T` to the test name and the package is auto-detected, including non-service packages like `internal/conns`. So `make t T=TestAccIAMRole_basic` equals `make t T=TestAccIAMRole_basic PKG=iam`. No match stops with an error; the legacy `TESTS` variable does not auto-detect. See the [Makefile Cheat Sheet](makefile-cheat-sheet.md) for details.
 
 !!! note
     See the [Makefile Cheat Sheet](makefile-cheat-sheet.md) for detailed information about the Makefile.
@@ -383,6 +442,16 @@ Use the `gen` target to run all the generators associated with the provider. Unl
 ```console
 make gen
 ```
+
+The full run covers every package plus the provider-level and sweeper generators, and can take several minutes. When your change is confined to a single service (for example, editing annotations or registering a new resource in an existing service), scope generation to that package with `PKG`/`K`:
+
+```console
+make gen PKG=<service>
+```
+
+Scoped generation runs only that service's generators (equivalent to `go generate ./internal/service/<service>/...`). It does not run the provider-level (`./internal/provider/...`) or sweeper generators, so changes that affect provider-level registration — such as adding a new service — still require the full `make gen`.
+
+If you changed anything under `internal/generate/` (templates or generator code), scoped `make gen PKG=<service>` is insufficient — run the full `make gen`, since generator changes affect every service.
 
 !!! note
     While running the generators, you may see hundreds or thousands of code changes as `make` and the generators delete and recreate files.
